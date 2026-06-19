@@ -183,8 +183,8 @@ class SearchView(ctk.CTkFrame):
     def _print_record(self):
         if self._selected_id is None:
             return
-        from app.pdf.renderer import generate_constancia
-        generate_constancia(self.table, self._selected_id)
+        from app.ui.print_view import PrintView
+        PrintView(self.winfo_toplevel(), self.table, self._selected_id)
 
     def _prev_page(self):
         if self._page > 0:
