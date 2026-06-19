@@ -301,6 +301,7 @@ def import_excel(path: Path, progress_cb=None) -> dict:
 
 def run_full_import(progress_cb=None) -> dict:
     """Inicializa la BD e importa todos los archivos Excel configurados."""
+    from app.core.database import recalculate_all_folios
     init_db()
     all_totals = {}
     for path in EXCEL_FILES:
@@ -312,6 +313,12 @@ def run_full_import(progress_cb=None) -> dict:
             progress_cb(f"\n=== {path.name} ===")
         totals = import_excel(path, progress_cb)
         all_totals[path.name] = totals
+
+    if progress_cb:
+        progress_cb("\nCalculando folios por año...")
+    recalculate_all_folios()
+    if progress_cb:
+        progress_cb("Folios asignados.")
     return all_totals
 
 

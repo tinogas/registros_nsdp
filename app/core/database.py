@@ -120,7 +120,57 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_bautismos_nombre     ON bautismos(nombre);
         CREATE INDEX IF NOT EXISTS idx_catecumenos_nombre   ON catecumenos(nombre);
         """)
+    _migrate_folio_columns()
     print(f"Base de datos inicializada en: {DB_PATH}")
+
+
+# Columna de año por tabla (para partición del folio)
+_YEAR_COL = {
+    "matrimonios":      "anio",
+    "primera_comunion": "anio",
+    "confirmacion":     "anio",
+    "bautismos":        "anio_bautismo",
+    "catecumenos":      "anio",
+}
+
+TABLES = list(_YEAR_COL.keys())
+
+
+def _migrate_folio_columns():
+    """Agrega la columna folio a las tablas que aún no la tienen."""
+    with db() as conn:
+        for table in TABLES:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN folio INTEGER")
+            except Exception:
+                pass  # columna ya existe
+
+
+def recalculate_folios(table: str):
+    """
+    Asigna folios secuenciales por año, reiniciando en 1 cada año.
+    Ordenamiento dentro del año: por id de inserción.
+    """
+    year_col = _YEAR_COL.get(table, "anio")
+    with db() as conn:
+        conn.executescript(f"""
+        WITH ranked AS (
+            SELECT id,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY {year_col}
+                       ORDER BY id
+                   ) AS rn
+            FROM {table}
+            WHERE {year_col} IS NOT NULL
+        )
+        UPDATE {table}
+        SET folio = (SELECT rn FROM ranked WHERE ranked.id = {table}.id);
+        """)
+
+
+def recalculate_all_folios():
+    for table in TABLES:
+        recalculate_folios(table)
 
 
 def count_all() -> dict:

@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from app.core.database import db
+from app.core.database import db, recalculate_folios
 
 # Campos editables por tabla (orden de presentación)
 FIELDS = {
@@ -102,6 +102,16 @@ class FormDialog(ctk.CTkToplevel):
         form = ctk.CTkScrollableFrame(self)
         form.pack(fill="both", expand=True, padx=16, pady=4)
 
+        # Folio (solo lectura)
+        folio_row = ctk.CTkFrame(form, fg_color="transparent")
+        folio_row.pack(fill="x", pady=3)
+        ctk.CTkLabel(folio_row, text="Folio:", width=160,
+                     anchor="w", font=("Roboto", 11, "bold")).pack(side="left")
+        self._folio_label = ctk.CTkLabel(folio_row, text="(asignado al guardar)",
+                                         anchor="w", font=("Roboto", 11),
+                                         text_color="gray")
+        self._folio_label.pack(side="left")
+
         for col, label in FIELDS.get(self.table, []):
             row = ctk.CTkFrame(form, fg_color="transparent")
             row.pack(fill="x", pady=3)
@@ -129,6 +139,9 @@ class FormDialog(ctk.CTkToplevel):
         if not row:
             return
         data = dict(row)
+        folio = data.get("folio")
+        if folio is not None:
+            self._folio_label.configure(text=str(folio), text_color="white")
         for col, entry in self._entries.items():
             val = data.get(col)
             entry.delete(0, "end")
@@ -155,6 +168,7 @@ class FormDialog(ctk.CTkToplevel):
                     list(values.values()) + [self.row_id],
                 )
 
+        recalculate_folios(self.table)
         if self.on_saved:
             self.on_saved()
         self.destroy()
@@ -168,6 +182,7 @@ class FormDialog(ctk.CTkToplevel):
         if resp and resp.strip().upper() == "ELIMINAR":
             with db() as conn:
                 conn.execute(f"DELETE FROM {self.table} WHERE id=?", (self.row_id,))
+            recalculate_folios(self.table)
             if self.on_saved:
                 self.on_saved()
             self.destroy()

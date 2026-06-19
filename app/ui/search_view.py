@@ -3,13 +3,13 @@ from app.core.database import db
 
 PAGE_SIZE = 25
 
-# Columnas visibles y etiquetas por tabla
+# Columnas visibles y etiquetas por tabla (folio siempre primero)
 TABLE_COLS = {
-    "matrimonios":     [("pareja", "Pareja"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco")],
-    "primera_comunion":[("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("mama", "Mamá"), ("papa", "Papá")],
-    "confirmacion":    [("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco")],
-    "bautismos":       [("nombre", "Nombre"),    ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
-    "catecumenos":     [("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año")],
+    "matrimonios":     [("folio", "Folio"), ("pareja", "Pareja"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco")],
+    "primera_comunion":[("folio", "Folio"), ("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("mama", "Mamá"), ("papa", "Papá")],
+    "confirmacion":    [("folio", "Folio"), ("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco")],
+    "bautismos":       [("folio", "Folio"), ("nombre", "Nombre"),    ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
+    "catecumenos":     [("folio", "Folio"), ("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año")],
 }
 
 NAME_COL = {
@@ -18,6 +18,14 @@ NAME_COL = {
     "confirmacion": "nombre",
     "bautismos": "nombre",
     "catecumenos": "nombre",
+}
+
+YEAR_ORDER_COL = {
+    "matrimonios":      "anio",
+    "primera_comunion": "anio",
+    "confirmacion":     "anio",
+    "bautismos":        "anio_bautismo",
+    "catecumenos":      "anio",
 }
 
 
@@ -97,7 +105,7 @@ class SearchView(ctk.CTkFrame):
         self._count_label.pack(side="right")
 
     def _get_years(self):
-        year_col = "anio_bautismo" if self.table == "bautismos" else "anio"
+        year_col = YEAR_ORDER_COL[self.table]
         try:
             with db() as conn:
                 rows = conn.execute(
@@ -112,7 +120,7 @@ class SearchView(ctk.CTkFrame):
         query_text = self._search_var.get().strip()
         year = self._year_var.get()
         name_col = NAME_COL[self.table]
-        year_col = "anio_bautismo" if self.table == "bautismos" else "anio"
+        year_col = YEAR_ORDER_COL[self.table]
         cols = [c for c, _ in TABLE_COLS[self.table]]
 
         conditions = []
@@ -133,7 +141,8 @@ class SearchView(ctk.CTkFrame):
             ).fetchone()[0]
             rows = conn.execute(
                 f"SELECT {select_cols} FROM {self.table} {where} "
-                f"ORDER BY id LIMIT {PAGE_SIZE} OFFSET {page * PAGE_SIZE}",
+                f"ORDER BY {year_col} ASC, folio ASC "
+                f"LIMIT {PAGE_SIZE} OFFSET {page * PAGE_SIZE}",
                 params,
             ).fetchall()
 
