@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import tkinter.font as tkfont
 import customtkinter as ctk
 from app.core.database import db
 
@@ -144,17 +145,19 @@ class SearchView(ctk.CTkFrame):
         vsb = ttk.Scrollbar(tree_frame, orient="vertical",
                             command=self._tree.yview,
                             style="NsdpTree.Vertical.TScrollbar")
-        self._tree.configure(yscrollcommand=vsb.set)
+        hsb = ttk.Scrollbar(tree_frame, orient="horizontal",
+                            command=self._tree.xview)
+        self._tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         vsb.pack(side="right", fill="y")
+        hsb.pack(side="bottom", fill="x")
         self._tree.pack(side="left", fill="both", expand=True)
 
-        # Configurar columnas
+        # Anclas por columna (sin ancho fijo aún — se calcula en _autosize_columns)
         for col in cols:
-            w = COL_WIDTHS.get(col, DEFAULT_COL_WIDTH)
             anchor = "center" if col in ("folio", "dia", "dia_bautismo", "anio", "anio_bautismo") else "w"
             self._tree.heading(col, text=headers[col], anchor=anchor)
-            self._tree.column(col, width=w, minwidth=w, anchor=anchor, stretch=(col == cols[-1]))
+            self._tree.column(col, width=80, minwidth=40, anchor=anchor, stretch=False)
 
         # Tags para filas alternas
         self._tree.tag_configure("odd",  background=self._odd_row,  foreground="#e2e8f0")
@@ -253,6 +256,65 @@ class SearchView(ctk.CTkFrame):
             tag      = "odd" if i % 2 else "even"
             iid      = self._tree.insert("", "end", values=values, tags=(tag,))
             self._row_ids.append((iid, row_id))
+
+        self._autosize_columns(cols, rows)
+
+    def _autosize_columns(self, cols, rows):
+        """Ajusta el ancho de cada columna al máximo entre encabezado y valores reales."""
+        data_font = tkfont.Font(family="Segoe UI", size=10)
+        head_font = tkfont.Font(family="Segoe UI", size=10, weight="bold")
+        PAD = 20   # padding interno por celda
+        MIN = 40
+        MAX = 420
+
+        headers = {c: h for c, h in TABLE_COLS[self.table]}
+
+        # Ancho inicial = ancho del encabezado
+        col_widths = {c: head_font.measure(headers.get(c, c)) + PAD for c in cols}
+
+        # Ampliar con el valor más largo de la página actual
+        for row in rows:
+            for j, col in enumerate(cols):
+                val = str(row[j + 1]) if row[j + 1] is not None else ""
+                w = data_font.measure(val) + PAD
+                if w > col_widths[col]:
+                    col_widths[col] = w
+
+        # Consultar la BD por la longitud máxima de cada columna (todos los registros)
+        year_col   = YEAR_ORDER_COL[self.table]
+        name_col   = NAME_COL[self.table]
+        query_text = self._search_var.get().strip()
+        year       = self._year_var.get()
+
+        conditions, params = [], []
+        if query_text:
+            conditions.append(f"{name_col} LIKE ?")
+            params.append(f"%{query_text}%")
+        if year and year != "Todos":
+            conditions.append(f"{year_col} = ?")
+            params.append(year)
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        length_exprs = ", ".join(
+            f"MAX(LENGTH(CAST({c} AS TEXT)))" for c in cols
+        )
+        try:
+            with db() as conn:
+                maxlens = conn.execute(
+                    f"SELECT {length_exprs} FROM {self.table} {where}", params
+                ).fetchone()
+            avg_char = data_font.measure("n")
+            for i, col in enumerate(cols):
+                max_len = maxlens[i] or 0
+                estimated = avg_char * max_len + PAD
+                if estimated > col_widths[col]:
+                    col_widths[col] = estimated
+        except Exception:
+            pass
+
+        for col in cols:
+            w = max(MIN, min(MAX, col_widths[col]))
+            self._tree.column(col, width=w, minwidth=MIN)
 
     # ------------------------------------------------------------------
     def _on_tree_select(self, _event=None):
