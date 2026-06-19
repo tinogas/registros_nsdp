@@ -48,6 +48,10 @@ class AppWindow(ctk.CTk):
 
         ctk.CTkFrame(self._sidebar, height=1, fg_color="gray30").pack(fill="x", padx=12, pady=12)
 
+        ctk.CTkButton(self._sidebar, text="Reportes", anchor="w",
+                      fg_color="transparent", hover_color="#16213e",
+                      command=self._open_reports).pack(fill="x", padx=8, pady=2)
+
         ctk.CTkButton(self._sidebar, text="Importar Excel", anchor="w",
                       fg_color="transparent", hover_color="#16213e",
                       command=self._open_import).pack(fill="x", padx=8, pady=2)
@@ -80,6 +84,10 @@ class AppWindow(ctk.CTk):
             row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (row_id,)).fetchone()
         if row:
             _show_detail_popup(self, table, dict(row))
+
+    def _open_reports(self):
+        from app.ui.report_view import ReportView
+        ReportView(self)
 
     def _open_import(self):
         from app.ui.import_view import ImportDialog
