@@ -1,23 +1,25 @@
+import tkinter as tk
+from tkinter import ttk
 import customtkinter as ctk
 from app.core.database import db
 
 PAGE_SIZE = 25
 
-# Columnas visibles y etiquetas por tabla (folio siempre primero)
+# Columnas visibles por tabla (folio siempre primero)
 TABLE_COLS = {
-    "matrimonios":     [("folio", "Folio"), ("pareja", "Pareja"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco")],
-    "primera_comunion":[("folio", "Folio"), ("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("mama", "Mamá"), ("papa", "Papá")],
-    "confirmacion":    [("folio", "Folio"), ("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco")],
-    "bautismos":       [("folio", "Folio"), ("nombre", "Nombre"),    ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
-    "catecumenos":     [("folio", "Folio"), ("nombre", "Nombre"),    ("dia", "Día"), ("mes", "Mes"), ("anio", "Año")],
+    "matrimonios":     [("folio", "Folio"), ("pareja", "Pareja"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año"), ("parroco", "Párroco")],
+    "primera_comunion":[("folio", "Folio"), ("nombre", "Nombre"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año"), ("mama", "Mamá"),      ("papa", "Papá")],
+    "confirmacion":    [("folio", "Folio"), ("nombre", "Nombre"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año"), ("parroco", "Párroco")],
+    "bautismos":       [("folio", "Folio"), ("nombre", "Nombre"),       ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
+    "catecumenos":     [("folio", "Folio"), ("nombre", "Nombre"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año")],
 }
 
 NAME_COL = {
-    "matrimonios": "pareja",
+    "matrimonios":      "pareja",
     "primera_comunion": "nombre",
-    "confirmacion": "nombre",
-    "bautismos": "nombre",
-    "catecumenos": "nombre",
+    "confirmacion":     "nombre",
+    "bautismos":        "nombre",
+    "catecumenos":      "nombre",
 }
 
 YEAR_ORDER_COL = {
@@ -28,6 +30,68 @@ YEAR_ORDER_COL = {
     "catecumenos":      "anio",
 }
 
+# Ancho en píxeles por columna
+COL_WIDTHS = {
+    "folio":          55,
+    "nombre":        260,
+    "pareja":        300,
+    "dia":            45,
+    "mes":           120,
+    "anio":           55,
+    "anio_bautismo":  55,
+    "dia_bautismo":   45,
+    "mes_bautismo":  120,
+    "mama":          175,
+    "papa":          175,
+    "parroco":       165,
+    "padre":         155,
+    "madre":         155,
+}
+DEFAULT_COL_WIDTH = 130
+
+
+def _style_treeview():
+    """Aplica tema oscuro al ttk.Treeview."""
+    style = ttk.Style()
+    style.theme_use("clam")
+
+    bg       = "#0f0f1a"
+    fg       = "#e2e8f0"
+    selected = "#1e40af"
+    header   = "#1a1a2e"
+    odd_row  = "#16213e"
+    even_row = "#0f172a"
+    border   = "#2d3748"
+
+    style.configure("NsdpTree.Treeview",
+                    background=even_row,
+                    foreground=fg,
+                    fieldbackground=even_row,
+                    borderwidth=0,
+                    rowheight=26,
+                    font=("Segoe UI", 10))
+
+    style.configure("NsdpTree.Treeview.Heading",
+                    background=header,
+                    foreground="#93c5fd",
+                    relief="flat",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.map("NsdpTree.Treeview",
+              background=[("selected", selected)],
+              foreground=[("selected", "#ffffff")])
+
+    style.map("NsdpTree.Treeview.Heading",
+              background=[("active", "#253360")])
+
+    style.configure("NsdpTree.Vertical.TScrollbar",
+                    background=border,
+                    troughcolor=bg,
+                    arrowcolor=fg,
+                    borderwidth=0)
+
+    return odd_row, even_row
+
 
 class SearchView(ctk.CTkFrame):
     def __init__(self, master, table: str, on_select=None, **kwargs):
@@ -35,14 +99,18 @@ class SearchView(ctk.CTkFrame):
         self.table = table
         self.on_select = on_select
         self._page = 0
-        self._rows = []
+        self._total = 0
         self._selected_id: int | None = None
+        self._row_ids: list[int] = []
+        self._odd_row, self._even_row = _style_treeview()
         self._build()
         self.load(page=0)
 
+    # ------------------------------------------------------------------
     def _build(self):
+        # ── Barra de búsqueda ──────────────────────────────────────
         top = ctk.CTkFrame(self, fg_color="transparent")
-        top.pack(fill="x", padx=10, pady=(10, 4))
+        top.pack(fill="x", padx=10, pady=(10, 6))
 
         self._search_var = ctk.StringVar()
         self._search_var.trace_add("write", lambda *_: self.load(page=0))
@@ -50,36 +118,56 @@ class SearchView(ctk.CTkFrame):
                      placeholder_text="Buscar por nombre...",
                      width=300).pack(side="left")
 
-        ctk.CTkLabel(top, text="Año:").pack(side="left", padx=(12, 4))
+        ctk.CTkLabel(top, text="Año:").pack(side="left", padx=(14, 4))
         self._year_var = ctk.StringVar(value="Todos")
         self._year_combo = ctk.CTkComboBox(top, variable=self._year_var,
                                            values=self._get_years(),
                                            command=lambda _: self.load(page=0),
-                                           width=90)
+                                           width=95)
         self._year_combo.pack(side="left")
 
-        # tabla con scrollbar
-        frame = ctk.CTkFrame(self)
-        frame.pack(fill="both", expand=True, padx=10, pady=4)
+        # ── Treeview ───────────────────────────────────────────────
+        tree_frame = tk.Frame(self, bg="#0f0f1a")
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 4))
 
         cols = [c for c, _ in TABLE_COLS[self.table]]
-        headers = [h for _, h in TABLE_COLS[self.table]]
+        headers = {c: h for c, h in TABLE_COLS[self.table]}
 
-        self._tree_frame = ctk.CTkScrollableFrame(frame)
-        self._tree_frame.pack(fill="both", expand=True)
+        self._tree = ttk.Treeview(
+            tree_frame,
+            columns=cols,
+            show="headings",
+            selectmode="browse",
+            style="NsdpTree.Treeview",
+        )
 
-        self._header_row = ctk.CTkFrame(self._tree_frame, fg_color="#1a1a2e")
-        self._header_row.pack(fill="x")
-        for h in headers:
-            ctk.CTkLabel(self._header_row, text=h, font=("Roboto", 12, "bold"),
-                         anchor="w", width=180).pack(side="left", padx=4, pady=4)
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical",
+                            command=self._tree.yview,
+                            style="NsdpTree.Vertical.TScrollbar")
+        self._tree.configure(yscrollcommand=vsb.set)
 
-        self._rows_frame = ctk.CTkFrame(self._tree_frame, fg_color="transparent")
-        self._rows_frame.pack(fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        self._tree.pack(side="left", fill="both", expand=True)
 
-        # barra de acciones
+        # Configurar columnas
+        for col in cols:
+            w = COL_WIDTHS.get(col, DEFAULT_COL_WIDTH)
+            anchor = "center" if col in ("folio", "dia", "dia_bautismo", "anio", "anio_bautismo") else "w"
+            self._tree.heading(col, text=headers[col], anchor=anchor)
+            self._tree.column(col, width=w, minwidth=w, anchor=anchor, stretch=(col == cols[-1]))
+
+        # Tags para filas alternas
+        self._tree.tag_configure("odd",  background=self._odd_row,  foreground="#e2e8f0")
+        self._tree.tag_configure("even", background=self._even_row, foreground="#e2e8f0")
+        self._tree.tag_configure("sel",  background="#1e40af",       foreground="#ffffff")
+
+        self._tree.bind("<<TreeviewSelect>>", self._on_tree_select)
+        self._tree.bind("<Double-1>",          self._on_double_click)
+
+        # ── Acciones ───────────────────────────────────────────────
         actions = ctk.CTkFrame(self, fg_color="transparent")
-        actions.pack(fill="x", padx=10, pady=(4, 0))
+        actions.pack(fill="x", padx=10, pady=(2, 0))
+
         ctk.CTkButton(actions, text="+ Nuevo", width=90,
                       fg_color="#4ade80", text_color="black",
                       command=self._new_record).pack(side="left", padx=(0, 6))
@@ -87,29 +175,32 @@ class SearchView(ctk.CTkFrame):
                                        state="disabled",
                                        command=self._edit_record)
         self._btn_edit.pack(side="left", padx=(0, 6))
-        self._btn_print = ctk.CTkButton(actions, text="Imprimir constancia", width=150,
+        self._btn_print = ctk.CTkButton(actions, text="Imprimir constancia", width=160,
                                         state="disabled",
                                         command=self._print_record)
         self._btn_print.pack(side="left")
 
-        # paginación
+        # ── Paginación ─────────────────────────────────────────────
         nav = ctk.CTkFrame(self, fg_color="transparent")
         nav.pack(fill="x", padx=10, pady=(4, 8))
+
         ctk.CTkButton(nav, text="< Anterior", width=100,
                       command=self._prev_page).pack(side="left")
         self._page_label = ctk.CTkLabel(nav, text="Página 1")
         self._page_label.pack(side="left", padx=12)
         ctk.CTkButton(nav, text="Siguiente >", width=100,
                       command=self._next_page).pack(side="left")
-        self._count_label = ctk.CTkLabel(nav, text="")
+        self._count_label = ctk.CTkLabel(nav, text="", text_color="gray")
         self._count_label.pack(side="right")
 
+    # ------------------------------------------------------------------
     def _get_years(self):
         year_col = YEAR_ORDER_COL[self.table]
         try:
             with db() as conn:
                 rows = conn.execute(
-                    f"SELECT DISTINCT {year_col} FROM {self.table} WHERE {year_col} IS NOT NULL ORDER BY {year_col}"
+                    f"SELECT DISTINCT {year_col} FROM {self.table} "
+                    f"WHERE {year_col} IS NOT NULL ORDER BY {year_col}"
                 ).fetchall()
             return ["Todos"] + [str(r[0]) for r in rows]
         except Exception:
@@ -118,13 +209,12 @@ class SearchView(ctk.CTkFrame):
     def load(self, page: int = 0):
         self._page = page
         query_text = self._search_var.get().strip()
-        year = self._year_var.get()
-        name_col = NAME_COL[self.table]
-        year_col = YEAR_ORDER_COL[self.table]
-        cols = [c for c, _ in TABLE_COLS[self.table]]
+        year       = self._year_var.get()
+        name_col   = NAME_COL[self.table]
+        year_col   = YEAR_ORDER_COL[self.table]
+        cols       = [c for c, _ in TABLE_COLS[self.table]]
 
-        conditions = []
-        params = []
+        conditions, params = [], []
         if query_text:
             conditions.append(f"{name_col} LIKE ?")
             params.append(f"%{query_text}%")
@@ -132,11 +222,11 @@ class SearchView(ctk.CTkFrame):
             conditions.append(f"{year_col} = ?")
             params.append(year)
 
-        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
-
+        where      = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         select_cols = ", ".join(["id"] + cols)
+
         with db() as conn:
-            total = conn.execute(
+            self._total = conn.execute(
                 f"SELECT count(*) FROM {self.table} {where}", params
             ).fetchone()[0]
             rows = conn.execute(
@@ -146,35 +236,42 @@ class SearchView(ctk.CTkFrame):
                 params,
             ).fetchall()
 
-        self._total = total
         self._render_rows(rows, cols)
-        self._page_label.configure(text=f"Página {page + 1} de {max(1, -(-total // PAGE_SIZE))}")
-        self._count_label.configure(text=f"{total} registros")
+        total_pages = max(1, -(-self._total // PAGE_SIZE))
+        self._page_label.configure(text=f"Página {page + 1} de {total_pages}")
+        self._count_label.configure(text=f"{self._total} registros")
 
     def _render_rows(self, rows, cols):
-        for widget in self._rows_frame.winfo_children():
-            widget.destroy()
+        # Limpiar treeview
+        for item in self._tree.get_children():
+            self._tree.delete(item)
 
+        self._row_ids = []
         for i, row in enumerate(rows):
-            bg = "#16213e" if i % 2 == 0 else "#0f3460"
-            row_frame = ctk.CTkFrame(self._rows_frame, fg_color=bg, cursor="hand2")
-            row_frame.pack(fill="x", pady=1)
-            row_id = row[0]
-            row_data = dict(zip(cols, row[1:]))
-            for c in cols:
-                val = str(row_data.get(c) or "")
-                ctk.CTkLabel(row_frame, text=val, anchor="w",
-                             width=180, font=("Roboto", 11)).pack(side="left", padx=4, pady=3)
-            row_frame.bind("<Button-1>", lambda e, rid=row_id: self._select(rid))
-            for child in row_frame.winfo_children():
-                child.bind("<Button-1>", lambda e, rid=row_id: self._select(rid))
+            row_id   = row[0]
+            values   = [str(row[j + 1]) if row[j + 1] is not None else "" for j in range(len(cols))]
+            tag      = "odd" if i % 2 else "even"
+            iid      = self._tree.insert("", "end", values=values, tags=(tag,))
+            self._row_ids.append((iid, row_id))
 
-    def _select(self, row_id: int):
+    # ------------------------------------------------------------------
+    def _on_tree_select(self, _event=None):
+        sel = self._tree.selection()
+        if not sel:
+            return
+        iid = sel[0]
+        row_id = next((rid for i, rid in self._row_ids if i == iid), None)
+        if row_id is None:
+            return
         self._selected_id = row_id
         self._btn_edit.configure(state="normal")
         self._btn_print.configure(state="normal")
         if self.on_select:
             self.on_select(self.table, row_id)
+
+    def _on_double_click(self, _event=None):
+        if self._selected_id is not None:
+            self._edit_record()
 
     def _new_record(self):
         from app.ui.form_view import FormDialog
