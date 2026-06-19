@@ -4,6 +4,6 @@ __pycache__/
 data/registros.db
 data/layouts/
 *.xlsx
-*.spec
+# build_exe.spec  # incluido en repo
 dist/
 build/
