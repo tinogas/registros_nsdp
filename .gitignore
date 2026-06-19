@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/registros.db
+data/layouts/
+*.xlsx
+*.spec
+dist/
+build/
