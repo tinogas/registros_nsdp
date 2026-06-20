@@ -60,6 +60,14 @@ class AppWindow(ctk.CTk):
             command=self._open_reports,
         ).pack(side="right", padx=(0, 6), pady=10)
 
+        ctk.CTkButton(
+            header, text="⚙", width=36,
+            fg_color="transparent", border_width=1, border_color="gray40",
+            hover_color="#1e1e3a", text_color=_MUTED,
+            font=("Segoe UI", 14),
+            command=self._open_settings,
+        ).pack(side="right", padx=(0, 4), pady=10)
+
         # ── Barra de pestañas ──────────────────────────────────────────
         self._tabbar = ctk.CTkFrame(self, corner_radius=0, fg_color=_TABBAR, height=44)
         self._tabbar.pack(fill="x")
@@ -134,6 +142,13 @@ class AppWindow(ctk.CTk):
         from app.ui.report_view import ReportView
         ReportView(self)
 
+    def _open_settings(self):
+        from app.ui.settings_view import IglesiaSettingsDialog
+        def _on_saved():
+            if isinstance(self._current_view, DashboardView):
+                self._current_view.refresh_iglesia()
+        IglesiaSettingsDialog(self, on_saved=_on_saved)
+
     def _open_import(self):
         from app.ui.import_view import ImportDialog
         ImportDialog(self)
@@ -149,9 +164,10 @@ class DashboardView(ctk.CTkFrame):
 
     def _build(self):
         ctk.CTkLabel(self, text="Resumen general",
-                     font=("Roboto", 20, "bold"), text_color=_TEXT).pack(pady=(28, 2))
-        ctk.CTkLabel(self, text="Parroquia Nuestra Señora de la Paz — Hermosillo, Sonora",
-                     font=("Roboto", 11), text_color="gray").pack(pady=(0, 20))
+                     font=("Roboto", 20, "bold"), text_color=_TEXT).pack(pady=(24, 6))
+
+        self._iglesia_panel = _IglesiaPanel(self, fg_color="transparent")
+        self._iglesia_panel.pack(fill="x", padx=30, pady=(0, 16))
 
         kpis = self._load_kpis()
 
@@ -182,6 +198,96 @@ class DashboardView(ctk.CTkFrame):
                 except Exception:
                     result[table] = (0, 0)
         return result
+
+    def refresh_iglesia(self):
+        self._iglesia_panel.refresh()
+
+
+class _IglesiaPanel(ctk.CTkFrame):
+    """Franja de datos de la iglesia que aparece en el Dashboard."""
+
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self._logo_img = None
+        self._build()
+        self.refresh()
+
+    def _build(self):
+        self._inner = ctk.CTkFrame(self, corner_radius=10, fg_color=_HEADER,
+                                   border_width=1, border_color="#2d3748")
+        self._inner.pack(fill="x")
+
+    def refresh(self):
+        from app.core.iglesia import load as iglesia_load
+        from app.utils.config import ASSETS_DIR
+
+        for w in self._inner.winfo_children():
+            w.destroy()
+        self._logo_img = None
+
+        cfg = iglesia_load()
+
+        # ── Columna izquierda: logo ──────────────────────────────────
+        left = ctk.CTkFrame(self._inner, fg_color="transparent", width=92)
+        left.pack(side="left", padx=(14, 8), pady=12)
+        left.pack_propagate(False)
+
+        logo_file = cfg.get("logo_file")
+        if logo_file:
+            logo_path = ASSETS_DIR / logo_file
+            if logo_path.exists():
+                try:
+                    from PIL import Image
+                    img = Image.open(logo_path).convert("RGBA")
+                    img.thumbnail((72, 72), Image.LANCZOS)
+                    self._logo_img = ctk.CTkImage(light_image=img, dark_image=img,
+                                                  size=(img.width, img.height))
+                    ctk.CTkLabel(left, image=self._logo_img, text="",
+                                 fg_color="transparent").pack(pady=(8, 0))
+                except Exception:
+                    pass
+
+        # ── Columna derecha: datos ───────────────────────────────────
+        right = ctk.CTkFrame(self._inner, fg_color="transparent")
+        right.pack(side="left", fill="both", expand=True, pady=12, padx=(0, 14))
+
+        nombre = cfg.get("nombre") or "—"
+        ctk.CTkLabel(right, text=nombre,
+                     font=("Roboto", 14, "bold"), text_color=_RED,
+                     anchor="w").pack(fill="x")
+
+        ciudad = cfg.get("ciudad") or ""
+        direccion = cfg.get("direccion") or ""
+        cp = cfg.get("codigo_postal") or ""
+        linea2_parts = [p for p in [direccion, ciudad, cp] if p]
+        linea2 = "  ·  ".join(linea2_parts) if linea2_parts else ""
+        if linea2:
+            ctk.CTkLabel(right, text=linea2,
+                         font=("Roboto", 10), text_color=_MUTED,
+                         anchor="w").pack(fill="x", pady=(2, 4))
+
+        # Fila de datos de contacto
+        contact = ctk.CTkFrame(right, fg_color="transparent")
+        contact.pack(fill="x", pady=(2, 0))
+
+        items = []
+        parroco = cfg.get("parroco_actual") or ""
+        telefono = cfg.get("telefono") or ""
+        horario = cfg.get("horario_oficina") or ""
+        secretaria = cfg.get("secretaria") or ""
+        if parroco:   items.append(("Párroco", parroco))
+        if telefono:  items.append(("Tel.", telefono))
+        if horario:   items.append(("Horario", horario))
+        if secretaria: items.append(("Secretaria", secretaria))
+
+        for i, (key, val) in enumerate(items):
+            if i > 0:
+                ctk.CTkLabel(contact, text="│", font=("Roboto", 10),
+                             text_color="#4a5568").pack(side="left", padx=4)
+            ctk.CTkLabel(contact, text=f"{key}: ", font=("Roboto", 10, "bold"),
+                         text_color=_MUTED).pack(side="left")
+            ctk.CTkLabel(contact, text=val, font=("Roboto", 10),
+                         text_color=_TEXT).pack(side="left")
 
 
 class _KpiCard(ctk.CTkFrame):

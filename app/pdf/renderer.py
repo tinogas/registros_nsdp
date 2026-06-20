@@ -153,10 +153,12 @@ def generate_pdf(table: str, data: dict, output_path: Path) -> Path:
     _draw_logo(c)
 
     # Pie de página
+    from app.core.iglesia import load as _load_iglesia
+    _cfg = _load_iglesia()
     c.setFont("Helvetica", 8)
     c.setFillColor(colors.gray)
     c.drawCentredString(PAGE_W / 2, 50,
-                        "Parroquia — Documento oficial generado por el sistema NSDP")
+                        f"{_cfg['nombre']} — Documento oficial")
 
     _draw_layout(c, layout, data)
     c.save()

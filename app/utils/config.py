@@ -12,6 +12,9 @@ EXCEL_FILES = [
     BASE_DIR / "SACRAMENTOS 2023.xlsx",
 ]
 
+IGLESIA_JSON = DATA_DIR / "iglesia.json"
+
 DATA_DIR.mkdir(exist_ok=True)
 LAYOUTS_DIR.mkdir(exist_ok=True)
 EXCEL_BACKUP_DIR.mkdir(exist_ok=True)
+ASSETS_DIR.mkdir(exist_ok=True)
