@@ -121,6 +121,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_catecumenos_nombre   ON catecumenos(nombre);
         """)
     _migrate_folio_columns()
+    homologar_parrocos()
     print(f"Base de datos inicializada en: {DB_PATH}")
 
 
@@ -171,6 +172,27 @@ def recalculate_folios(table: str):
 def recalculate_all_folios():
     for table in TABLES:
         recalculate_folios(table)
+
+
+_TABLES_WITH_PARROCO = ["bautismos", "confirmacion", "matrimonios", "primera_comunion"]
+
+# (nombre_canónico, patrón LIKE para detectar variantes)
+_CANONICAL_PARROCOS = [
+    ("PBRO. FELIPE DE JESUS ZARAGOZA ORTEGA", "%ZARAGOZA%"),
+    ("PBRO. GERARDO CAMACHO PONCE",           "%CAMACHO%"),
+]
+
+
+def homologar_parrocos():
+    """Normaliza todas las variantes tipográficas de párroco a la forma canónica."""
+    with db() as conn:
+        for table in _TABLES_WITH_PARROCO:
+            for canonical, pattern in _CANONICAL_PARROCOS:
+                conn.execute(
+                    f"UPDATE {table} SET parroco = ? "
+                    f"WHERE parroco LIKE ? AND parroco != ?",
+                    (canonical, pattern, canonical),
+                )
 
 
 def count_all() -> dict:

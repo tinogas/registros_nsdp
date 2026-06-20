@@ -190,9 +190,11 @@ class ReportView(ctk.CTkToplevel):
 
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         select = ", ".join(cols)
+        has_parroco_col = "parroco" in cols
+        order = f"parroco, {year_col}, folio" if has_parroco_col else f"{year_col}, folio"
         with db() as conn:
             rows = conn.execute(
-                f"SELECT {select} FROM {table} {where} ORDER BY {year_col}, {mes_col}",
+                f"SELECT {select} FROM {table} {where} ORDER BY {order}",
                 params,
             ).fetchall()
 
@@ -509,60 +511,93 @@ class ReportView(ctk.CTkToplevel):
 
     def _do_export_excel(self):
         import openpyxl
+        from itertools import groupby
         from openpyxl.styles import Font, PatternFill, Alignment
 
-        cols = REPORT_COLS[self._table]
+        all_cols    = REPORT_COLS[self._table]
+        has_parroco = "parroco" in all_cols
+        # Igual que el PDF: si hay párroco, se omite de las columnas de fila
+        cols = [c for c in all_cols if c != "parroco"] if has_parroco else all_cols
+
         out = Path(tempfile.gettempdir()) / f"reporte_{self._table}.xlsx"
-        wb = openpyxl.Workbook()
-        ws = wb.active
+        wb  = openpyxl.Workbook()
+        ws  = wb.active
         ws.title = self._tabla_var.get()[:31]
 
-        header_fill = PatternFill("solid", fgColor="1a1a2e")
-        header_font = Font(bold=True, color="FFFFFF", size=10)
+        # ── Estilos ───────────────────────────────────────────────────
+        hdr_fill  = PatternFill("solid", fgColor="1A1A2E")
+        hdr_font  = Font(bold=True, color="FFFFFF", size=10)
+        grp_fill  = PatternFill("solid", fgColor="2D3A6E")
+        grp_font  = Font(bold=True, color="93C5FD", size=10)
+        alt_fill  = PatternFill("solid", fgColor="EEF2FF")
+        sub_fill  = PatternFill("solid", fgColor="1E2D5E")
+        sub_font  = Font(bold=True, color="93C5FD", size=10)
+        tot_fill  = PatternFill("solid", fgColor="2D1800")
+        tot_font  = Font(bold=True, color="FBBF24", size=11)
+
+        def style_row(row_idx, fill, font=None):
+            for j in range(1, len(cols) + 1):
+                cell = ws.cell(row=row_idx, column=j)
+                cell.fill = fill
+                if font:
+                    cell.font = font
+
+        # ── Encabezado de columnas ─────────────────────────────────────
         for j, col in enumerate(cols, 1):
             header = REPORT_HEADERS.get(col, col.replace("_", " ").title())
             cell = ws.cell(row=1, column=j, value=header.upper())
-            cell.font = header_font
-            cell.fill = header_fill
+            cell.font = hdr_font
+            cell.fill = hdr_fill
             cell.alignment = Alignment(horizontal="center")
             ws.column_dimensions[cell.column_letter].width = 18
 
-        alt_fill = PatternFill("solid", fgColor="EEF2FF")
-        for i, row in enumerate(self._results, 2):
-            fill = alt_fill if i % 2 == 0 else PatternFill()
-            for j, col in enumerate(cols, 1):
-                cell = ws.cell(row=i, column=j, value=row.get(col))
-                cell.fill = fill
+        # ── Datos (con corte de grupo por párroco) ─────────────────────
+        if has_parroco:
+            sorted_rows = sorted(
+                self._results,
+                key=lambda r: (r.get("parroco") or "").upper(),
+            )
+            groups = groupby(sorted_rows, key=lambda r: r.get("parroco") or "Sin párroco")
+
+            for parroco_nombre, grupo_iter in groups:
+                grupo = list(grupo_iter)
+
+                # Fila de encabezado de grupo
+                grp_vals = [""] * len(cols)
+                grp_vals[0] = f"Párroco: {parroco_nombre}  ({len(grupo)} registros)"
+                ws.append(grp_vals)
+                style_row(ws.max_row, grp_fill, grp_font)
+
+                for i, row in enumerate(grupo):
+                    data_vals = [row.get(col) for col in cols]
+                    ws.append(data_vals)
+                    fill = alt_fill if i % 2 == 0 else PatternFill()
+                    style_row(ws.max_row, fill)
+        else:
+            for i, row in enumerate(self._results):
+                data_vals = [row.get(col) for col in cols]
+                ws.append(data_vals)
+                fill = alt_fill if i % 2 == 0 else PatternFill()
+                style_row(ws.max_row, fill)
 
         # ── Totales finales ───────────────────────────────────────────
-        sub_fill = PatternFill("solid", fgColor="1E2D5E")
-        sub_font = Font(bold=True, color="93C5FD", size=10)
-        tot_fill = PatternFill("solid", fgColor="2D1800")
-        tot_font = Font(bold=True, color="FBBF24", size=11)
+        ws.append([""] * len(cols))   # separador
 
-        has_parroco = "parroco" in cols
         if has_parroco:
             from collections import Counter
             counts = Counter(r.get("parroco") or "Sin párroco" for r in self._results)
-            ws.append([""] * len(cols))
             for nombre, n in sorted(counts.items(), key=lambda x: (x[0] or "").upper()):
                 sub_vals = [""] * len(cols)
                 sub_vals[0] = f"Subtotal — {nombre}"
                 sub_vals[-1] = f"{n} registros"
                 ws.append(sub_vals)
-                row_idx = ws.max_row
-                for j in range(1, len(cols) + 1):
-                    ws.cell(row=row_idx, column=j).fill = sub_fill
-                    ws.cell(row=row_idx, column=j).font = sub_font
+                style_row(ws.max_row, sub_fill, sub_font)
 
         tot_vals = [""] * len(cols)
         tot_vals[0] = "TOTAL GENERAL"
         tot_vals[-1] = f"{len(self._results)} registros"
         ws.append(tot_vals)
-        tot_idx = ws.max_row
-        for j in range(1, len(cols) + 1):
-            ws.cell(row=tot_idx, column=j).fill = tot_fill
-            ws.cell(row=tot_idx, column=j).font = tot_font
+        style_row(ws.max_row, tot_fill, tot_font)
 
         wb.save(out)
         self.after(0, self._open_and_notify, out, "Excel")
