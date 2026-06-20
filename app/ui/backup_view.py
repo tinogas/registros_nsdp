@@ -93,6 +93,11 @@ class BackupView(ctk.CTkToplevel):
                                           state="disabled", width=100,
                                           command=self._do_restore)
         self._btn_restore.pack(side="left", padx=(0, 6))
+        self._btn_download = ctk.CTkButton(btn_row, text="⬇ Guardar como…",
+                                           fg_color="#0f766e", hover_color="#0d5e57",
+                                           state="disabled", width=130,
+                                           command=self._do_download)
+        self._btn_download.pack(side="left", padx=(0, 6))
         self._btn_delete = ctk.CTkButton(btn_row, text="Eliminar",
                                          fg_color="#f87171", text_color="black",
                                          state="disabled", width=80,
@@ -175,6 +180,7 @@ class BackupView(ctk.CTkToplevel):
                                      tags=(tag,))
 
         self._btn_restore.configure(state="disabled")
+        self._btn_download.configure(state="disabled")
         self._btn_delete.configure(state="disabled")
 
     def _refresh_log(self):
@@ -203,6 +209,7 @@ class BackupView(ctk.CTkToplevel):
         sel = self._backup_tree.selection()
         state = "normal" if sel else "disabled"
         self._btn_restore.configure(state=state)
+        self._btn_download.configure(state=state)
         self._btn_delete.configure(state=state)
 
     def _selected_path(self) -> Path | None:
@@ -249,6 +256,27 @@ class BackupView(ctk.CTkToplevel):
         else:
             self._status.configure(text=f"Error: {msg}", text_color="#fca5a5")
         self._refresh_log()
+
+    def _do_download(self):
+        path = self._selected_path()
+        if not path:
+            return
+        from tkinter import filedialog
+        dest = filedialog.asksaveasfilename(
+            parent=self,
+            title="Guardar respaldo como…",
+            initialfile=path.name,
+            defaultextension=".db",
+            filetypes=[("Base de datos SQLite", "*.db"), ("Todos los archivos", "*.*")],
+        )
+        if not dest:
+            return
+        import shutil
+        try:
+            shutil.copy2(path, dest)
+            self._status.configure(text=f"Guardado en: {dest}", text_color="#86efac")
+        except Exception as e:
+            self._status.configure(text=f"Error al guardar: {e}", text_color="#fca5a5")
 
     def _do_delete(self):
         path = self._selected_path()
