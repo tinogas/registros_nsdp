@@ -8,9 +8,9 @@ PAGE_SIZE = 25
 
 # Columnas visibles por tabla (folio siempre primero)
 TABLE_COLS = {
-    "matrimonios":     [("folio", "Folio"), ("pareja", "Pareja"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco"), ("libro", "Libro"), ("pagina", "Pág."), ("partida", "Partida")],
-    "primera_comunion":[("folio", "Folio"), ("nombre", "Nombre"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("mama", "Mamá"),       ("papa", "Papá"),   ("padrinos", "Padrinos"), ("parroco", "Párroco")],
-    "confirmacion":    [("folio", "Folio"), ("nombre", "Nombre"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("arzobispo", "Arzobispo"), ("parroco", "Párroco"), ("libro", "Libro"), ("pagina", "Pág."), ("partida", "Partida")],
+    "matrimonios":     [("folio","Folio"),("pareja","Pareja"),("dia","Día"),("mes","Mes"),("anio","Año"),("presbitero","Presbítero"),("parroco","Párroco"),("libro","Libro"),("pagina","Pág."),("partida","Partida")],
+    "primera_comunion":[("folio","Folio"),("nombre","Nombre"),("dia","Día"),("mes","Mes"),("anio","Año"),("mama","Mamá"),("papa","Papá"),("padrinos","Padrinos"),("parroco","Párroco")],
+    "confirmacion":    [("folio","Folio"),("nombre","Nombre"),("dia","Día"),("mes","Mes"),("anio","Año"),("papa","Papá"),("mama","Mamá"),("padrinos","Padrinos"),("arzobispo","Arzobispo"),("parroco","Párroco"),("libro","Libro"),("pagina","Pág."),("partida","Partida")],
     "bautismos":       [("folio", "Folio"), ("nombre", "Nombre"),  ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
     "catecumenos":     [("folio", "Folio"), ("nombre", "Nombre"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año")],
 }
