@@ -8,11 +8,11 @@ PAGE_SIZE = 25
 
 # Columnas visibles por tabla (folio siempre primero)
 TABLE_COLS = {
-    "matrimonios":     [("folio", "Folio"), ("pareja", "Pareja"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año"), ("parroco", "Párroco")],
-    "primera_comunion":[("folio", "Folio"), ("nombre", "Nombre"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año"), ("mama", "Mamá"),      ("papa", "Papá")],
-    "confirmacion":    [("folio", "Folio"), ("nombre", "Nombre"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año"), ("parroco", "Párroco")],
-    "bautismos":       [("folio", "Folio"), ("nombre", "Nombre"),       ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
-    "catecumenos":     [("folio", "Folio"), ("nombre", "Nombre"),       ("dia", "Día"), ("mes", "Mes"),          ("anio", "Año")],
+    "matrimonios":     [("folio", "Folio"), ("pareja", "Pareja"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("parroco", "Párroco"), ("libro", "Libro"), ("pagina", "Pág."), ("partida", "Partida")],
+    "primera_comunion":[("folio", "Folio"), ("nombre", "Nombre"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("mama", "Mamá"),       ("papa", "Papá"),   ("padrinos", "Padrinos"), ("parroco", "Párroco")],
+    "confirmacion":    [("folio", "Folio"), ("nombre", "Nombre"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año"), ("arzobispo", "Arzobispo"), ("parroco", "Párroco"), ("libro", "Libro"), ("pagina", "Pág."), ("partida", "Partida")],
+    "bautismos":       [("folio", "Folio"), ("nombre", "Nombre"),  ("dia_bautismo", "Día"), ("mes_bautismo", "Mes"), ("anio_bautismo", "Año"), ("parroco", "Párroco")],
+    "catecumenos":     [("folio", "Folio"), ("nombre", "Nombre"),  ("dia", "Día"), ("mes", "Mes"), ("anio", "Año")],
 }
 
 NAME_COL = {
@@ -44,7 +44,13 @@ COL_WIDTHS = {
     "mes_bautismo":  120,
     "mama":          175,
     "papa":          175,
+    "padrinos":      200,
     "parroco":       165,
+    "arzobispo":     180,
+    "presbitero":    165,
+    "libro":          70,
+    "pagina":         55,
+    "partida":        70,
     "padre":         155,
     "madre":         155,
 }

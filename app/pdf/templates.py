@@ -230,6 +230,7 @@ FORM_LAYOUTS = {
             "mes":      {"field": "mes",              "x": 380, "y": 355, "font_size": 11},
             "anio":     {"field": "anio",             "x": 560, "y": 355, "font_size": 11},
             "padrinos": {"field": "padrinos",         "x": 250, "y": 318, "font_size": 11},
+            "parroco":  {"field": "parroco",          "x": 250, "y": 282, "font_size": 11},
         },
     },
     "confirmacion": {
@@ -243,6 +244,7 @@ FORM_LAYOUTS = {
             "mes":       {"field": "mes",        "x": 250, "y": 352, "font_size": 11},
             "anio":      {"field": "anio",       "x": 480, "y": 352, "font_size": 11},
             "padrinos":  {"field": "padrinos",   "x": 250, "y": 318, "font_size": 11},
+            "parroco":   {"field": "parroco",    "x": 250, "y": 282, "font_size": 11},
             "libro":     {"field": "libro",      "x": 160, "y": 238, "font_size": 11},
             "pagina":    {"field": "pagina",     "x": 280, "y": 238, "font_size": 11},
             "partida":   {"field": "partida",    "x": 390, "y": 238, "font_size": 11},
@@ -259,6 +261,7 @@ FORM_LAYOUTS = {
             "presbitero": {"field": "presbitero",  "x": 490, "y": 415, "font_size": 11},
             "testigo1":   {"field": "testigo1",    "x": 185, "y": 372, "font_size": 11},
             "testigo2":   {"field": "testigo2",    "x": 450, "y": 372, "font_size": 11},
+            "parroco":    {"field": "parroco",     "x": 250, "y": 330, "font_size": 11},
             "libro":      {"field": "libro",       "x": 150, "y": 252, "font_size": 11},
             "pagina":     {"field": "pagina",      "x": 310, "y": 252, "font_size": 11},
             "partida":    {"field": "partida",     "x": 140, "y": 232, "font_size": 11},

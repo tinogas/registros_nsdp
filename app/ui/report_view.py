@@ -2,6 +2,7 @@
 Módulo de reportes: filtros por tipo, año y mes → tabla de resultados
 → exportar a PDF o Excel.
 """
+import datetime
 import threading
 import tempfile
 from pathlib import Path
@@ -97,7 +98,7 @@ class ReportView(ctk.CTkToplevel):
                         command=self._on_table_change).pack(side="left", padx=(0, 12))
 
         ctk.CTkLabel(filters, text="Año:").pack(side="left", padx=(0, 4))
-        self._year_var = ctk.StringVar(value="Todos")
+        self._year_var = ctk.StringVar(value=str(datetime.datetime.now().year))
         self._year_combo = ctk.CTkComboBox(filters, variable=self._year_var,
                                            values=["Todos"], width=90)
         self._year_combo.pack(side="left", padx=(0, 12))
@@ -168,7 +169,8 @@ class ReportView(ctk.CTkToplevel):
         except Exception:
             years = ["Todos"]
         self._year_combo.configure(values=years)
-        self._year_var.set("Todos")
+        current_year = str(datetime.datetime.now().year)
+        self._year_var.set(current_year if current_year in years else "Todos")
 
     def _run_query(self):
         table = self._table
