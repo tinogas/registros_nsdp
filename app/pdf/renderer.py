@@ -192,21 +192,19 @@ def _open_pdf(path: Path):
         os.startfile(str(path))
 
 
-def print_pdf(path: Path) -> str:
-    """Envía el PDF a la impresora predeterminada del sistema.
-    Devuelve el nombre de la impresora usada, o lanza excepción si falla.
-    """
-    try:
-        import win32print
-        printer_name = win32print.GetDefaultPrinter()
-    except Exception:
-        printer_name = "impresora predeterminada"
+def print_pdf(path: Path) -> None:
+    """Abre el diálogo de impresión del sistema (con preview y controles del controlador)."""
     try:
         import win32api
-        win32api.ShellExecute(0, "print", str(path), None, ".", 0)
+        # SW_SHOWNORMAL=1: abre la aplicación asociada al PDF y muestra su diálogo de impresión
+        win32api.ShellExecute(0, "print", str(path), None, ".", 1)
     except Exception:
-        os.startfile(str(path), "print")
-    return printer_name
+        # Fallback: abrir con el visor predeterminado para que el usuario imprima desde ahí
+        try:
+            os.startfile(str(path))
+        except Exception:
+            import subprocess
+            subprocess.Popen(["cmd", "/c", "start", "", str(path)], shell=False)
 
 
 # ── Modo formulario pre-impreso ───────────────────────────────────────────────

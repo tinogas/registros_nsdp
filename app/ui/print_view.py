@@ -465,13 +465,7 @@ class PrintView(ctk.CTkToplevel):
             generate_pdf(self.table, self._data, out)
 
         try:
-            printer = print_pdf(out)
-            from tkinter import messagebox
-            messagebox.showinfo(
-                "Enviado a imprimir",
-                f"El documento fue enviado a:\n{printer}",
-                parent=self,
-            )
+            print_pdf(out)
         except Exception as e:
             from tkinter import messagebox
             messagebox.showerror("Error de impresión", str(e), parent=self)
