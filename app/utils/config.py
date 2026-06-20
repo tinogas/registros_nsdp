@@ -1,6 +1,13 @@
+import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, 'frozen', False):
+    # Ejecutable PyInstaller: datos junto al .exe, bundle en _MEIPASS
+    BASE_DIR   = Path(sys.executable).parent
+    BUNDLE_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR   = Path(__file__).resolve().parent.parent.parent
+    BUNDLE_DIR = BASE_DIR
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "registros.db"
 LAYOUTS_DIR = DATA_DIR / "layouts"

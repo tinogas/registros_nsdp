@@ -55,7 +55,12 @@ class BackupView(ctk.CTkToplevel):
 
         ctk.CTkButton(left, text="+ Crear respaldo ahora",
                       fg_color="#4ade80", text_color="black", height=32,
-                      command=self._do_create).pack(fill="x", padx=12, pady=(0, 6))
+                      command=self._do_create).pack(fill="x", padx=12, pady=(0, 4))
+
+        ctk.CTkButton(left, text="📂 Restaurar desde archivo…",
+                      fg_color="transparent", border_width=1, border_color="#1e40af",
+                      text_color="#93c5fd", height=30,
+                      command=self._do_restore_from_file).pack(fill="x", padx=12, pady=(0, 6))
 
         tree_frame = tk.Frame(left, bg=_BG)
         tree_frame.pack(fill="both", expand=True, padx=8, pady=(0, 6))
@@ -277,6 +282,35 @@ class BackupView(ctk.CTkToplevel):
             self._status.configure(text=f"Guardado en: {dest}", text_color="#86efac")
         except Exception as e:
             self._status.configure(text=f"Error al guardar: {e}", text_color="#fca5a5")
+
+    def _do_restore_from_file(self):
+        from tkinter import filedialog
+        path_str = filedialog.askopenfilename(
+            parent=self,
+            title="Seleccionar archivo de respaldo para restaurar…",
+            defaultextension=".db",
+            filetypes=[("Base de datos SQLite", "*.db"), ("Todos los archivos", "*.*")],
+        )
+        if not path_str:
+            return
+        path = Path(path_str)
+        resp = messagebox.askyesno(
+            "Confirmar restauración",
+            f"¿Restaurar la base de datos desde\n«{path.name}»?\n\n"
+            "La base de datos actual será reemplazada.\n"
+            "Se recomienda reiniciar la aplicación después.",
+            parent=self,
+        )
+        if not resp:
+            return
+        ok, msg = restore_backup(path)
+        if ok:
+            self._status.configure(
+                text="Restauración OK — reinicia la app para aplicar los cambios.",
+                text_color="#86efac")
+        else:
+            self._status.configure(text=f"Error: {msg}", text_color="#fca5a5")
+        self._refresh_log()
 
     def _do_delete(self):
         path = self._selected_path()

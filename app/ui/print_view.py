@@ -14,11 +14,11 @@ from app.pdf.layout_editor import (
     get_form_layout, save_form_layout, reset_form_layout,
 )
 from app.pdf.renderer import (
-    generate_pdf, generate_form_pdf, _open_pdf, _resolve_field,
+    generate_pdf, generate_form_pdf, print_pdf, _resolve_field,
     PAGE_W, PAGE_H,
 )
 from app.core.database import db
-from app.utils.config import BASE_DIR
+from app.utils.config import BUNDLE_DIR
 from pathlib import Path
 import tempfile
 
@@ -260,7 +260,7 @@ class PrintView(ctk.CTkToplevel):
         img_name = _FORM_IMAGES.get(self.table)
         if not img_name:
             return
-        img_path = BASE_DIR / img_name
+        img_path = BUNDLE_DIR / img_name
         if not img_path.exists():
             return
         try:
@@ -464,4 +464,14 @@ class PrintView(ctk.CTkToplevel):
             out = tmp / f"{self.table}_{nombre_safe}_{self.row_id}.pdf"
             generate_pdf(self.table, self._data, out)
 
-        _open_pdf(out)
+        try:
+            printer = print_pdf(out)
+            from tkinter import messagebox
+            messagebox.showinfo(
+                "Enviado a imprimir",
+                f"El documento fue enviado a:\n{printer}",
+                parent=self,
+            )
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror("Error de impresión", str(e), parent=self)

@@ -10,7 +10,10 @@ a = Analysis(
     binaries=[],
     datas=[
         (ctk_path, 'customtkinter'),
-        ('assets', 'assets'),
+        ('Formato_Bautizo.jpg',       '.'),
+        ('Formato_1ra_Comunion.jpg',  '.'),
+        ('Formato_confirmacion.jpg',  '.'),
+        ('Formato_matrimonio.jpg',    '.'),
     ],
     hiddenimports=[
         'customtkinter',

@@ -192,6 +192,23 @@ def _open_pdf(path: Path):
         os.startfile(str(path))
 
 
+def print_pdf(path: Path) -> str:
+    """Envía el PDF a la impresora predeterminada del sistema.
+    Devuelve el nombre de la impresora usada, o lanza excepción si falla.
+    """
+    try:
+        import win32print
+        printer_name = win32print.GetDefaultPrinter()
+    except Exception:
+        printer_name = "impresora predeterminada"
+    try:
+        import win32api
+        win32api.ShellExecute(0, "print", str(path), None, ".", 0)
+    except Exception:
+        os.startfile(str(path), "print")
+    return printer_name
+
+
 # ── Modo formulario pre-impreso ───────────────────────────────────────────────
 
 def _draw_form_fields(c: canvas.Canvas, fields: dict, data: dict, page_w: float, page_h: float):
