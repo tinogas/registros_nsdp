@@ -188,3 +188,58 @@ def _open_pdf(path: Path):
         win32api.ShellExecute(0, "open", str(path), None, ".", 1)
     except Exception:
         os.startfile(str(path))
+
+
+# ── Modo formulario pre-impreso ───────────────────────────────────────────────
+
+def _draw_form_fields(c: canvas.Canvas, fields: dict, data: dict, page_w: float, page_h: float):
+    """Dibuja solo los valores (sin etiquetas ni decoración) sobre un formulario físico."""
+    for _key, fdef in fields.items():
+        field_key = fdef.get("field")
+        if not field_key:
+            continue
+        value = _resolve_field(field_key, data)
+        if not value:
+            continue
+        x = fdef.get("x", 80)
+        y = fdef.get("y", 300)
+        font_size = fdef.get("font_size", 11)
+        center = fdef.get("center", False)
+        c.setFont("Helvetica", font_size)
+        c.setFillColor(colors.black)
+        if center:
+            c.drawCentredString(page_w / 2, y, value)
+        else:
+            c.drawString(x, y, value)
+
+
+def generate_form_pdf(table: str, data: dict, output_path: Path,
+                      form_layout: dict | None = None) -> Path:
+    """Genera PDF con solo los datos del registro para imprimir sobre un formulario pre-impreso.
+
+    form_layout: dict con claves 'page_size' y 'fields'. Si es None, se carga del JSON guardado.
+    """
+    from app.pdf.layout_editor import get_form_layout
+    form = form_layout if form_layout is not None else get_form_layout(table)
+    page_size = tuple(form.get("page_size", list(LETTER)))
+    c = canvas.Canvas(str(output_path), pagesize=page_size)
+    _draw_form_fields(c, form.get("fields", {}), data, page_size[0], page_size[1])
+    c.save()
+    return output_path
+
+
+def generate_form_constancia(table: str, row_id: int) -> Path:
+    """Versión de generate_constancia para modo formulario."""
+    with db() as conn:
+        row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (row_id,)).fetchone()
+    if not row:
+        raise ValueError(f"Registro {row_id} no encontrado en {table}")
+    data = dict(row)
+    tmp_dir = Path(tempfile.gettempdir()) / "nsdp_constancias"
+    tmp_dir.mkdir(exist_ok=True)
+    nombre = data.get("nombre") or data.get("pareja") or str(row_id)
+    nombre_safe = "".join(ch for ch in nombre if ch.isalnum() or ch in " _-")[:40]
+    output_path = tmp_dir / f"{table}_forma_{nombre_safe}_{row_id}.pdf"
+    generate_form_pdf(table, data, output_path)
+    _open_pdf(output_path)
+    return output_path

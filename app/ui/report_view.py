@@ -5,8 +5,12 @@ Módulo de reportes: filtros por tipo, año y mes → tabla de resultados
 import threading
 import tempfile
 from pathlib import Path
+import tkinter as tk
+from tkinter import ttk
+import tkinter.font as tkfont
 import customtkinter as ctk
 from app.core.database import db
+from app.ui.search_view import _style_treeview
 
 MESES = [
     "Todos", "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
@@ -21,13 +25,32 @@ TABLAS = {
     "Catecúmenos":    "catecumenos",
 }
 
-# Columnas del reporte por tabla
 REPORT_COLS = {
     "matrimonios":     ["pareja",  "dia", "mes", "anio", "presbitero", "parroco"],
-    "primera_comunion":["nombre",  "dia", "mes", "anio", "mama",       "papa", "parroco"],
+    "primera_comunion":["nombre",  "dia", "mes", "anio", "mama",       "papa",    "parroco"],
     "confirmacion":    ["nombre",  "dia", "mes", "anio", "arzobispo",  "parroco"],
     "bautismos":       ["nombre",  "dia_bautismo", "mes_bautismo", "anio_bautismo", "padrino", "madrina", "parroco"],
     "catecumenos":     ["nombre",  "dia", "mes", "anio", "padre", "madre"],
+}
+
+REPORT_HEADERS = {
+    "pareja":        "Pareja",
+    "nombre":        "Nombre",
+    "dia":           "Día",
+    "mes":           "Mes",
+    "anio":          "Año",
+    "presbitero":    "Presbítero",
+    "parroco":       "Párroco",
+    "mama":          "Mamá",
+    "papa":          "Papá",
+    "arzobispo":     "Arzobispo",
+    "dia_bautismo":  "Día",
+    "mes_bautismo":  "Mes",
+    "anio_bautismo": "Año",
+    "padrino":       "Padrino",
+    "madrina":       "Madrina",
+    "padre":         "Padre",
+    "madre":         "Madre",
 }
 
 YEAR_COL = {
@@ -46,17 +69,22 @@ MES_COL = {
     "catecumenos":     "mes",
 }
 
+# Columnas numéricas / cortas (ancla centrada en treeview y mínimo estrecho en PDF)
+_CENTER_COLS = {"dia", "dia_bautismo", "anio", "anio_bautismo"}
+
 
 class ReportView(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("Reportes")
-        self.geometry("900x620")
+        self.geometry("960x640")
         self.grab_set()
-        self._results = []
+        self._results: list[dict] = []
         self._table = "bautismos"
+        self._odd_row, self._even_row = _style_treeview()
         self._build()
 
+    # ------------------------------------------------------------------
     def _build(self):
         # ── Filtros ──────────────────────────────────────────────────
         filters = ctk.CTkFrame(self, fg_color="#1a1a2e")
@@ -85,18 +113,28 @@ class ReportView(ctk.CTkToplevel):
         self._count_lbl = ctk.CTkLabel(filters, text="")
         self._count_lbl.pack(side="left")
 
-        # ── Tabla de resultados ───────────────────────────────────────
-        tbl_frame = ctk.CTkFrame(self)
-        tbl_frame.pack(fill="both", expand=True, padx=12, pady=4)
+        # ── Treeview ─────────────────────────────────────────────────
+        tree_frame = tk.Frame(self, bg="#0f0f1a")
+        tree_frame.pack(fill="both", expand=True, padx=12, pady=4)
 
-        self._scroll = ctk.CTkScrollableFrame(tbl_frame)
-        self._scroll.pack(fill="both", expand=True)
+        self._tree = ttk.Treeview(
+            tree_frame,
+            columns=[],
+            show="headings",
+            selectmode="browse",
+            style="NsdpTree.Treeview",
+        )
 
-        self._header_frame = ctk.CTkFrame(self._scroll, fg_color="#1a1a2e")
-        self._header_frame.pack(fill="x")
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical",
+                            command=self._tree.yview,
+                            style="NsdpTree.Vertical.TScrollbar")
+        hsb = ttk.Scrollbar(tree_frame, orient="horizontal",
+                            command=self._tree.xview)
+        self._tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
-        self._body_frame = ctk.CTkFrame(self._scroll, fg_color="transparent")
-        self._body_frame.pack(fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        hsb.pack(side="bottom", fill="x")
+        self._tree.pack(side="left", fill="both", expand=True)
 
         # ── Exportar ─────────────────────────────────────────────────
         export = ctk.CTkFrame(self, fg_color="transparent")
@@ -119,7 +157,6 @@ class ReportView(ctk.CTkToplevel):
     # ------------------------------------------------------------------
     def _on_table_change(self, label: str):
         self._table = TABLAS.get(label, "bautismos")
-        # Actualizar años disponibles
         year_col = YEAR_COL[self._table]
         try:
             with db() as conn:
@@ -162,28 +199,78 @@ class ReportView(ctk.CTkToplevel):
         self._render_table(cols)
 
     def _render_table(self, cols: list):
-        for w in self._header_frame.winfo_children():
-            w.destroy()
-        for w in self._body_frame.winfo_children():
-            w.destroy()
+        # Reconfigurar columnas del treeview
+        self._tree.configure(columns=cols)
+        for col in cols:
+            header = REPORT_HEADERS.get(col, col.replace("_", " ").title())
+            anchor = "center" if col in _CENTER_COLS else "w"
+            self._tree.heading(col, text=header, anchor=anchor)
+            self._tree.column(col, width=80, minwidth=40, anchor=anchor, stretch=False)
 
-        col_width = max(100, min(160, 800 // len(cols)))
+        # Limpiar y poblar
+        for item in self._tree.get_children():
+            self._tree.delete(item)
 
-        # Encabezados
-        for c in cols:
-            ctk.CTkLabel(self._header_frame, text=c.replace("_", " ").title(),
-                         width=col_width, font=("Roboto", 11, "bold"),
-                         anchor="w").pack(side="left", padx=3, pady=4)
+        self._tree.tag_configure("odd",  background=self._odd_row,  foreground="#e2e8f0")
+        self._tree.tag_configure("even", background=self._even_row, foreground="#e2e8f0")
 
-        # Filas (máx 500 en pantalla)
-        for i, row in enumerate(self._results[:500]):
-            bg = "#16213e" if i % 2 == 0 else "#0f3460"
-            rf = ctk.CTkFrame(self._body_frame, fg_color=bg)
-            rf.pack(fill="x", pady=1)
-            for c in cols:
-                val = str(row.get(c) or "")
-                ctk.CTkLabel(rf, text=val, width=col_width,
-                             font=("Roboto", 10), anchor="w").pack(side="left", padx=3, pady=2)
+        for i, row in enumerate(self._results[:2000]):
+            values = [str(row.get(col) or "") for col in cols]
+            tag = "odd" if i % 2 else "even"
+            self._tree.insert("", "end", values=values, tags=(tag,))
+
+        self._autosize_columns(cols)
+
+    def _autosize_columns(self, cols: list):
+        data_font = tkfont.Font(family="Segoe UI", size=10)
+        head_font = tkfont.Font(family="Segoe UI", size=10, weight="bold")
+        PAD = 20
+        MIN = 40
+        MAX = 420
+
+        col_widths = {}
+        for col in cols:
+            header = REPORT_HEADERS.get(col, col.replace("_", " ").title())
+            col_widths[col] = head_font.measure(header) + PAD
+
+        for row in self._results:
+            for col in cols:
+                val = str(row.get(col) or "")
+                w = data_font.measure(val) + PAD
+                if w > col_widths[col]:
+                    col_widths[col] = w
+
+        # Longitud máxima en todos los registros de la BD (filtro actual)
+        year_col = YEAR_COL[self._table]
+        mes_col = MES_COL[self._table]
+        year = self._year_var.get()
+        mes = self._mes_var.get()
+        conditions, params = [], []
+        if year and year != "Todos":
+            conditions.append(f"{year_col} = ?")
+            params.append(year)
+        if mes and mes != "Todos":
+            conditions.append(f"UPPER({mes_col}) = ?")
+            params.append(mes.upper())
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        length_exprs = ", ".join(f"MAX(LENGTH(CAST({c} AS TEXT)))" for c in cols)
+        try:
+            with db() as conn:
+                maxlens = conn.execute(
+                    f"SELECT {length_exprs} FROM {self._table} {where}", params
+                ).fetchone()
+            avg_char = data_font.measure("n")
+            for i, col in enumerate(cols):
+                estimated = avg_char * (maxlens[i] or 0) + PAD
+                if estimated > col_widths[col]:
+                    col_widths[col] = estimated
+        except Exception:
+            pass
+
+        for col in cols:
+            w = max(MIN, min(MAX, col_widths[col]))
+            self._tree.column(col, width=w, minwidth=MIN)
 
     # ------------------------------------------------------------------
     # Exportaciones
@@ -195,6 +282,7 @@ class ReportView(ctk.CTkToplevel):
         threading.Thread(target=self._do_export_pdf, daemon=True).start()
 
     def _do_export_pdf(self):
+        import io
         from reportlab.pdfgen import canvas as rl_canvas
         from reportlab.lib.pagesizes import LETTER, landscape
         from reportlab.lib import colors
@@ -203,21 +291,49 @@ class ReportView(ctk.CTkToplevel):
         cols = REPORT_COLS[self._table]
         out = Path(tempfile.gettempdir()) / f"reporte_{self._table}.pdf"
         pw, ph = landscape(LETTER)
+        MARGIN = 40
+        USABLE = pw - 2 * MARGIN
+        ROW_H = 14
+        HDR_H = 18
 
-        c = rl_canvas.Canvas(str(out), pagesize=landscape(LETTER))
-        col_w = (pw - 80) / len(cols)
+        # Medir anchos reales con canvas temporal (stringWidth exacto por fuente)
+        _buf = io.BytesIO()
+        _mc = rl_canvas.Canvas(_buf, pagesize=landscape(LETTER))
 
-        def draw_header(y):
+        desired: dict[str, float] = {}
+        for col in cols:
+            header = REPORT_HEADERS.get(col, col.replace("_", " ").title()).upper()
+            w = _mc.stringWidth(header, "Helvetica-Bold", 8) + 14
+            for row in self._results:
+                val = str(row.get(col) or "")
+                w_val = _mc.stringWidth(val, "Helvetica", 8) + 10
+                if w_val > w:
+                    w = w_val
+            desired[col] = w
+
+        total_desired = sum(desired.values()) or 1.0
+        scale = min(1.0, USABLE / total_desired)
+        col_widths: dict[str, float] = {col: desired[col] * scale for col in cols}
+
+        # Posición X acumulada de inicio de cada columna
+        col_x: dict[str, float] = {}
+        x = MARGIN + 2
+        for col in cols:
+            col_x[col] = x
+            x += col_widths[col]
+
+        def draw_header(y: float):
             c.setFillColor(colors.HexColor("#1a1a2e"))
-            c.rect(40, y - 4, pw - 80, 18, fill=1, stroke=0)
+            c.rect(MARGIN, y - 4, USABLE, HDR_H, fill=1, stroke=0)
             c.setFillColor(colors.white)
             c.setFont("Helvetica-Bold", 8)
-            for i, col in enumerate(cols):
-                c.drawString(42 + i * col_w, y + 2, col.replace("_", " ").upper()[:16])
+            for col in cols:
+                label = REPORT_HEADERS.get(col, col.replace("_", " ").title()).upper()
+                c.drawString(col_x[col], y + 2, label)
+
+        c = rl_canvas.Canvas(str(out), pagesize=landscape(LETTER))
 
         # Título
-        c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(colors.black)
         year = self._year_var.get()
         mes = self._mes_var.get()
         titulo = f"Reporte de {tabla_label}"
@@ -225,13 +341,15 @@ class ReportView(ctk.CTkToplevel):
             titulo += f" — {year}"
         if mes != "Todos":
             titulo += f" / {mes}"
-        c.drawString(40, ph - 40, titulo)
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.black)
+        c.drawString(MARGIN, ph - 40, titulo)
         c.setFont("Helvetica", 9)
-        c.drawString(40, ph - 56, f"Total: {len(self._results)} registros")
+        c.drawString(MARGIN, ph - 56, f"Total: {len(self._results)} registros")
 
         y = ph - 80
         draw_header(y)
-        y -= 20
+        y -= HDR_H + 2
 
         c.setFont("Helvetica", 8)
         for i, row in enumerate(self._results):
@@ -239,17 +357,17 @@ class ReportView(ctk.CTkToplevel):
                 c.showPage()
                 y = ph - 40
                 draw_header(y)
-                y -= 20
+                y -= HDR_H + 2
                 c.setFont("Helvetica", 8)
 
             bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
             c.setFillColor(bg)
-            c.rect(40, y - 3, pw - 80, 14, fill=1, stroke=0)
+            c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
             c.setFillColor(colors.black)
-            for j, col in enumerate(cols):
-                val = str(row.get(col) or "")[:24]
-                c.drawString(42 + j * col_w, y + 1, val)
-            y -= 14
+            for col in cols:
+                val = str(row.get(col) or "")
+                c.drawString(col_x[col], y + 1, val)
+            y -= ROW_H
 
         c.save()
         self.after(0, self._open_and_notify, out, "PDF")
@@ -270,17 +388,16 @@ class ReportView(ctk.CTkToplevel):
         ws = wb.active
         ws.title = self._tabla_var.get()[:31]
 
-        # Encabezados
         header_fill = PatternFill("solid", fgColor="1a1a2e")
         header_font = Font(bold=True, color="FFFFFF", size=10)
         for j, col in enumerate(cols, 1):
-            cell = ws.cell(row=1, column=j, value=col.replace("_", " ").upper())
+            header = REPORT_HEADERS.get(col, col.replace("_", " ").title())
+            cell = ws.cell(row=1, column=j, value=header.upper())
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center")
             ws.column_dimensions[cell.column_letter].width = 18
 
-        # Datos
         alt_fill = PatternFill("solid", fgColor="EEF2FF")
         for i, row in enumerate(self._results, 2):
             fill = alt_fill if i % 2 == 0 else PatternFill()

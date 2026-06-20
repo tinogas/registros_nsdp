@@ -29,3 +29,34 @@ def reset_layout(table: str):
     path = LAYOUTS_DIR / f"{table}.json"
     if path.exists():
         path.unlink()
+
+
+# ── Layouts de formularios pre-impresos ──────────────────────────────────────
+
+def get_form_layout(table: str) -> dict:
+    """Retorna el layout de formulario guardado o el default de FORM_LAYOUTS."""
+    path = LAYOUTS_DIR / f"{table}_forma.json"
+    if path.exists():
+        try:
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    from app.pdf.templates import FORM_LAYOUTS
+    raw = FORM_LAYOUTS.get(table, {})
+    return {
+        "page_size": list(raw.get("page_size", [612, 792])),
+        "fields": {k: dict(v) for k, v in raw.get("fields", {}).items()},
+    }
+
+
+def save_form_layout(table: str, layout: dict):
+    path = LAYOUTS_DIR / f"{table}_forma.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(layout, f, ensure_ascii=False, indent=2)
+
+
+def reset_form_layout(table: str):
+    path = LAYOUTS_DIR / f"{table}_forma.json"
+    if path.exists():
+        path.unlink()

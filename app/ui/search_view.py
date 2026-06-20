@@ -181,7 +181,15 @@ class SearchView(ctk.CTkFrame):
         self._btn_print = ctk.CTkButton(actions, text="Imprimir constancia", width=160,
                                         state="disabled",
                                         command=self._print_record)
-        self._btn_print.pack(side="left")
+        self._btn_print.pack(side="left", padx=(0, 6))
+        # Solo se muestra para sacramentos que tienen formulario pre-impreso físico
+        _TABLES_WITH_FORM = {"bautismos", "primera_comunion", "confirmacion", "matrimonios"}
+        self._btn_form = ctk.CTkButton(actions, text="Imprimir en formulario", width=175,
+                                       state="disabled",
+                                       fg_color="#f97316", text_color="black",
+                                       command=self._print_form)
+        if self.table in _TABLES_WITH_FORM:
+            self._btn_form.pack(side="left")
 
         # ── Paginación ─────────────────────────────────────────────
         nav = ctk.CTkFrame(self, fg_color="transparent")
@@ -328,12 +336,11 @@ class SearchView(ctk.CTkFrame):
         self._selected_id = row_id
         self._btn_edit.configure(state="normal")
         self._btn_print.configure(state="normal")
-        if self.on_select:
-            self.on_select(self.table, row_id)
+        self._btn_form.configure(state="normal")
 
     def _on_double_click(self, _event=None):
-        if self._selected_id is not None:
-            self._edit_record()
+        if self._selected_id is not None and self.on_select:
+            self.on_select(self.table, self._selected_id)
 
     def _new_record(self):
         from app.ui.form_view import FormDialog
@@ -353,6 +360,12 @@ class SearchView(ctk.CTkFrame):
             return
         from app.ui.print_view import PrintView
         PrintView(self.winfo_toplevel(), self.table, self._selected_id)
+
+    def _print_form(self):
+        if self._selected_id is None:
+            return
+        from app.ui.print_view import PrintView
+        PrintView(self.winfo_toplevel(), self.table, self._selected_id, form_mode=True)
 
     def _prev_page(self):
         if self._page > 0:
