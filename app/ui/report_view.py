@@ -283,22 +283,30 @@ class ReportView(ctk.CTkToplevel):
 
     def _do_export_pdf(self):
         import io
+        from itertools import groupby
         from reportlab.pdfgen import canvas as rl_canvas
         from reportlab.lib.pagesizes import LETTER, landscape
         from reportlab.lib import colors
 
         tabla_label = self._tabla_var.get()
-        cols = REPORT_COLS[self._table]
+        all_cols   = REPORT_COLS[self._table]
+        has_parroco = "parroco" in all_cols
+
+        # En tablas con párroco, el agrupador se muestra como encabezado de sección
+        # y se omite de las columnas de cada fila → más espacio horizontal.
+        cols = [c for c in all_cols if c != "parroco"] if has_parroco else all_cols
+
         out = Path(tempfile.gettempdir()) / f"reporte_{self._table}.pdf"
         pw, ph = landscape(LETTER)
-        MARGIN = 40
-        USABLE = pw - 2 * MARGIN
-        ROW_H = 14
-        HDR_H = 18
+        MARGIN  = 40
+        USABLE  = pw - 2 * MARGIN
+        ROW_H   = 14
+        HDR_H   = 18
+        GRP_H   = 16   # altura de la franja de grupo por párroco
 
-        # Medir anchos reales con canvas temporal (stringWidth exacto por fuente)
+        # ── Medir anchos de columna ────────────────────────────────────
         _buf = io.BytesIO()
-        _mc = rl_canvas.Canvas(_buf, pagesize=landscape(LETTER))
+        _mc  = rl_canvas.Canvas(_buf, pagesize=landscape(LETTER))
 
         desired: dict[str, float] = {}
         for col in cols:
@@ -312,17 +320,17 @@ class ReportView(ctk.CTkToplevel):
             desired[col] = w
 
         total_desired = sum(desired.values()) or 1.0
-        scale = min(1.0, USABLE / total_desired)
+        scale     = min(1.0, USABLE / total_desired)
         col_widths: dict[str, float] = {col: desired[col] * scale for col in cols}
 
-        # Posición X acumulada de inicio de cada columna
         col_x: dict[str, float] = {}
         x = MARGIN + 2
         for col in cols:
             col_x[col] = x
             x += col_widths[col]
 
-        def draw_header(y: float):
+        # ── Funciones auxiliares de dibujo ─────────────────────────────
+        def draw_col_header(y: float):
             c.setFillColor(colors.HexColor("#1a1a2e"))
             c.rect(MARGIN, y - 4, USABLE, HDR_H, fill=1, stroke=0)
             c.setFillColor(colors.white)
@@ -331,16 +339,24 @@ class ReportView(ctk.CTkToplevel):
                 label = REPORT_HEADERS.get(col, col.replace("_", " ").title()).upper()
                 c.drawString(col_x[col], y + 2, label)
 
+        def draw_group_header(y: float, nombre: str, n: int):
+            c.setFillColor(colors.HexColor("#2d3a6e"))
+            c.rect(MARGIN, y - 3, USABLE, GRP_H, fill=1, stroke=0)
+            c.setFillColor(colors.HexColor("#93c5fd"))
+            c.setFont("Helvetica-Bold", 9)
+            c.drawString(MARGIN + 6, y + 2, f"Párroco: {nombre}  ({n} registros)")
+
+        # ── Canvas y título ────────────────────────────────────────────
         c = rl_canvas.Canvas(str(out), pagesize=landscape(LETTER))
 
-        # Título
-        year = self._year_var.get()
-        mes = self._mes_var.get()
+        year  = self._year_var.get()
+        mes   = self._mes_var.get()
         titulo = f"Reporte de {tabla_label}"
         if year != "Todos":
             titulo += f" — {year}"
         if mes != "Todos":
             titulo += f" / {mes}"
+
         c.setFont("Helvetica-Bold", 14)
         c.setFillColor(colors.black)
         c.drawString(MARGIN, ph - 40, titulo)
@@ -348,26 +364,67 @@ class ReportView(ctk.CTkToplevel):
         c.drawString(MARGIN, ph - 56, f"Total: {len(self._results)} registros")
 
         y = ph - 80
-        draw_header(y)
-        y -= HDR_H + 2
+        draw_col_header(y)
+        y -= HDR_H + 4
 
+        # ── Datos ──────────────────────────────────────────────────────
         c.setFont("Helvetica", 8)
-        for i, row in enumerate(self._results):
-            if y < 40:
-                c.showPage()
-                y = ph - 40
-                draw_header(y)
-                y -= HDR_H + 2
-                c.setFont("Helvetica", 8)
 
-            bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
-            c.setFillColor(bg)
-            c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
-            c.setFillColor(colors.black)
-            for col in cols:
-                val = str(row.get(col) or "")
-                c.drawString(col_x[col], y + 1, val)
-            y -= ROW_H
+        if has_parroco:
+            # Ordenar por párroco (sort estable: preserva orden año/mes dentro del grupo)
+            sorted_rows = sorted(
+                self._results,
+                key=lambda r: (r.get("parroco") or "").upper(),
+            )
+            groups = groupby(sorted_rows, key=lambda r: r.get("parroco") or "Sin párroco")
+
+            for parroco_nombre, grupo_iter in groups:
+                grupo = list(grupo_iter)
+
+                # Si no cabe el encabezado + al menos una fila → nueva página
+                if y < GRP_H + ROW_H + 44:
+                    c.showPage()
+                    y = ph - 40
+                    draw_col_header(y)
+                    y -= HDR_H + 4
+                    c.setFont("Helvetica", 8)
+
+                draw_group_header(y, parroco_nombre, len(grupo))
+                y -= GRP_H + 2
+
+                for i, row in enumerate(grupo):
+                    if y < 44:
+                        c.showPage()
+                        y = ph - 40
+                        draw_col_header(y)
+                        y -= HDR_H + 4
+                        c.setFont("Helvetica", 8)
+
+                    bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
+                    c.setFillColor(bg)
+                    c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
+                    c.setFillColor(colors.black)
+                    for col in cols:
+                        c.drawString(col_x[col], y + 1, str(row.get(col) or ""))
+                    y -= ROW_H
+
+                y -= 4   # separación visual entre grupos
+        else:
+            for i, row in enumerate(self._results):
+                if y < 44:
+                    c.showPage()
+                    y = ph - 40
+                    draw_col_header(y)
+                    y -= HDR_H + 4
+                    c.setFont("Helvetica", 8)
+
+                bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
+                c.setFillColor(bg)
+                c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
+                c.setFillColor(colors.black)
+                for col in cols:
+                    c.drawString(col_x[col], y + 1, str(row.get(col) or ""))
+                y -= ROW_H
 
         c.save()
         self.after(0, self._open_and_notify, out, "PDF")
