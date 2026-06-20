@@ -17,6 +17,9 @@ _FIELDS = [
     ("telefono",        "Teléfono"),
     ("horario_oficina", "Horario de Oficina"),
     ("secretaria",      "Nombre de la Secretaria"),
+    ("email",           "Correo electrónico"),
+    ("facebook",        "Facebook"),
+    ("instagram",       "Instagram"),
 ]
 
 _IMG_TYPES = [("Imagen", "*.png *.jpg *.jpeg *.bmp *.webp")]

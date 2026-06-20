@@ -10,6 +10,9 @@ DEFAULTS: dict = {
     "telefono":        "",
     "horario_oficina": "",
     "secretaria":      "",
+    "email":           "",
+    "facebook":        "",
+    "instagram":       "",
     "logo_file":       None,
     "foto_file":       None,
 }

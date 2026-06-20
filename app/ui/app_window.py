@@ -227,11 +227,7 @@ class _IglesiaPanel(ctk.CTkFrame):
 
         cfg = iglesia_load()
 
-        # ── Columna izquierda: logo ──────────────────────────────────
-        left = ctk.CTkFrame(self._inner, fg_color="transparent", width=92)
-        left.pack(side="left", padx=(14, 8), pady=12)
-        left.pack_propagate(False)
-
+        # ── Logo (solo si existe) ────────────────────────────────────
         logo_file = cfg.get("logo_file")
         if logo_file:
             logo_path = ASSETS_DIR / logo_file
@@ -239,55 +235,65 @@ class _IglesiaPanel(ctk.CTkFrame):
                 try:
                     from PIL import Image
                     img = Image.open(logo_path).convert("RGBA")
-                    img.thumbnail((72, 72), Image.LANCZOS)
+                    img.thumbnail((56, 56), Image.LANCZOS)
                     self._logo_img = ctk.CTkImage(light_image=img, dark_image=img,
                                                   size=(img.width, img.height))
-                    ctk.CTkLabel(left, image=self._logo_img, text="",
-                                 fg_color="transparent").pack(pady=(8, 0))
+                    ctk.CTkLabel(self._inner, image=self._logo_img, text="",
+                                 fg_color="transparent").pack(side="left",
+                                                              padx=(10, 4), pady=8)
                 except Exception:
                     pass
 
-        # ── Columna derecha: datos ───────────────────────────────────
-        right = ctk.CTkFrame(self._inner, fg_color="transparent")
-        right.pack(side="left", fill="both", expand=True, pady=12, padx=(0, 14))
+        # ── Datos ────────────────────────────────────────────────────
+        data_col = ctk.CTkFrame(self._inner, fg_color="transparent")
+        data_col.pack(side="left", fill="both", expand=True, pady=8, padx=(4, 12))
 
+        # Nombre
         nombre = cfg.get("nombre") or "—"
-        ctk.CTkLabel(right, text=nombre,
-                     font=("Roboto", 14, "bold"), text_color=_RED,
+        ctk.CTkLabel(data_col, text=nombre,
+                     font=("Roboto", 13, "bold"), text_color=_RED,
                      anchor="w").pack(fill="x")
 
-        ciudad = cfg.get("ciudad") or ""
+        # Dirección / ciudad / cp  (solo si hay algo)
+        ciudad    = cfg.get("ciudad")    or ""
         direccion = cfg.get("direccion") or ""
-        cp = cfg.get("codigo_postal") or ""
+        cp        = cfg.get("codigo_postal") or ""
         linea2_parts = [p for p in [direccion, ciudad, cp] if p]
-        linea2 = "  ·  ".join(linea2_parts) if linea2_parts else ""
-        if linea2:
-            ctk.CTkLabel(right, text=linea2,
+        if linea2_parts:
+            ctk.CTkLabel(data_col, text="  ·  ".join(linea2_parts),
                          font=("Roboto", 10), text_color=_MUTED,
-                         anchor="w").pack(fill="x", pady=(2, 4))
+                         anchor="w").pack(fill="x")
 
-        # Fila de datos de contacto
-        contact = ctk.CTkFrame(right, fg_color="transparent")
-        contact.pack(fill="x", pady=(2, 0))
+        # Filas de contacto: fila 1 (párroco · tel · horario · secretaria)
+        _row1 = [
+            ("Párroco",    cfg.get("parroco_actual") or ""),
+            ("Tel.",       cfg.get("telefono")       or ""),
+            ("Horario",    cfg.get("horario_oficina")or ""),
+            ("Secretaria", cfg.get("secretaria")     or ""),
+        ]
+        _row1 = [(k, v) for k, v in _row1 if v]
 
-        items = []
-        parroco = cfg.get("parroco_actual") or ""
-        telefono = cfg.get("telefono") or ""
-        horario = cfg.get("horario_oficina") or ""
-        secretaria = cfg.get("secretaria") or ""
-        if parroco:   items.append(("Párroco", parroco))
-        if telefono:  items.append(("Tel.", telefono))
-        if horario:   items.append(("Horario", horario))
-        if secretaria: items.append(("Secretaria", secretaria))
+        # Fila 2 (email · facebook · instagram)
+        _row2 = [
+            ("Email",     cfg.get("email")     or ""),
+            ("Facebook",  cfg.get("facebook")  or ""),
+            ("Instagram", cfg.get("instagram") or ""),
+        ]
+        _row2 = [(k, v) for k, v in _row2 if v]
 
-        for i, (key, val) in enumerate(items):
-            if i > 0:
-                ctk.CTkLabel(contact, text="│", font=("Roboto", 10),
-                             text_color="#4a5568").pack(side="left", padx=4)
-            ctk.CTkLabel(contact, text=f"{key}: ", font=("Roboto", 10, "bold"),
-                         text_color=_MUTED).pack(side="left")
-            ctk.CTkLabel(contact, text=val, font=("Roboto", 10),
-                         text_color=_TEXT).pack(side="left")
+        for items in (_row1, _row2):
+            if not items:
+                continue
+            row_frame = ctk.CTkFrame(data_col, fg_color="transparent")
+            row_frame.pack(fill="x")
+            for i, (key, val) in enumerate(items):
+                if i > 0:
+                    ctk.CTkLabel(row_frame, text="│", font=("Roboto", 10),
+                                 text_color="#4a5568").pack(side="left", padx=3)
+                ctk.CTkLabel(row_frame, text=f"{key}: ", font=("Roboto", 10, "bold"),
+                             text_color=_MUTED).pack(side="left")
+                ctk.CTkLabel(row_frame, text=val, font=("Roboto", 10),
+                             text_color=_TEXT).pack(side="left")
 
 
 class _KpiCard(ctk.CTkFrame):
