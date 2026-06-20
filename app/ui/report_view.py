@@ -213,8 +213,12 @@ class ReportView(ctk.CTkToplevel):
         for item in self._tree.get_children():
             self._tree.delete(item)
 
-        self._tree.tag_configure("odd",  background=self._odd_row,  foreground="#e2e8f0")
-        self._tree.tag_configure("even", background=self._even_row, foreground="#e2e8f0")
+        self._tree.tag_configure("odd",        background=self._odd_row,  foreground="#e2e8f0")
+        self._tree.tag_configure("even",       background=self._even_row, foreground="#e2e8f0")
+        self._tree.tag_configure("subtotal",   background="#1e2d5e",      foreground="#93c5fd",
+                                 font=("Segoe UI", 10, "bold"))
+        self._tree.tag_configure("grandtotal", background="#2d1800",      foreground="#fbbf24",
+                                 font=("Segoe UI", 10, "bold"))
 
         for i, row in enumerate(self._results[:2000]):
             values = [str(row.get(col) or "") for col in cols]
@@ -222,6 +226,26 @@ class ReportView(ctk.CTkToplevel):
             self._tree.insert("", "end", values=values, tags=(tag,))
 
         self._autosize_columns(cols)
+
+        # ── Totales al final ─────────────────────────────────────────
+        if not self._results:
+            return
+
+        has_parroco = "parroco" in cols
+        if has_parroco:
+            from collections import Counter
+            counts = Counter(r.get("parroco") or "Sin párroco" for r in self._results)
+            self._tree.insert("", "end", values=[""] * len(cols))
+            for nombre, n in sorted(counts.items(), key=lambda x: (x[0] or "").upper()):
+                vals = [""] * len(cols)
+                vals[0] = f"  {nombre}"
+                vals[-1] = f"{n} registros"
+                self._tree.insert("", "end", values=vals, tags=("subtotal",))
+
+        total_vals = [""] * len(cols)
+        total_vals[0] = "TOTAL GENERAL"
+        total_vals[-1] = f"{len(self._results)} registros"
+        self._tree.insert("", "end", values=total_vals, tags=("grandtotal",))
 
     def _autosize_columns(self, cols: list):
         data_font = tkfont.Font(family="Segoe UI", size=10)
@@ -428,6 +452,52 @@ class ReportView(ctk.CTkToplevel):
                     c.drawString(col_x[col], y + 1, str(row.get(col) or ""))
                 y -= ROW_H
 
+        # ── Sección de totales finales ─────────────────────────────────
+        y -= 8
+        if y < 50:
+            c.showPage()
+            y = ph - 40
+
+        c.setStrokeColor(colors.HexColor("#4a5568"))
+        c.line(MARGIN, y, MARGIN + USABLE, y)
+        y -= 14
+
+        c.setFillColor(colors.HexColor("#1a1a2e"))
+        c.rect(MARGIN, y - 4, USABLE, HDR_H, fill=1, stroke=0)
+        c.setFillColor(colors.HexColor("#fbbf24"))
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(MARGIN + 6, y + 2, "RESUMEN DE TOTALES")
+        y -= HDR_H + 4
+
+        if has_parroco:
+            from collections import Counter as _Counter
+            parroco_counts = _Counter(r.get("parroco") or "Sin párroco" for r in self._results)
+            c.setFont("Helvetica", 8)
+            for i, (nombre, n) in enumerate(
+                sorted(parroco_counts.items(), key=lambda x: (x[0] or "").upper())
+            ):
+                if y < 30:
+                    c.showPage()
+                    y = ph - 40
+                    c.setFont("Helvetica", 8)
+                bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
+                c.setFillColor(bg)
+                c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
+                c.setFillColor(colors.black)
+                c.drawString(MARGIN + 6, y + 1, f"  {nombre}")
+                c.drawRightString(MARGIN + USABLE - 6, y + 1, f"{n} registros")
+                y -= ROW_H
+            if y < 30:
+                c.showPage()
+                y = ph - 40
+
+        c.setFillColor(colors.HexColor("#2d1800"))
+        c.rect(MARGIN, y - 3, USABLE, ROW_H + 2, fill=1, stroke=0)
+        c.setFillColor(colors.HexColor("#fbbf24"))
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(MARGIN + 6, y + 1, "TOTAL GENERAL")
+        c.drawRightString(MARGIN + USABLE - 6, y + 1, f"{len(self._results)} registros")
+
         c.save()
         self.after(0, self._open_and_notify, out, "PDF")
 
@@ -463,6 +533,36 @@ class ReportView(ctk.CTkToplevel):
             for j, col in enumerate(cols, 1):
                 cell = ws.cell(row=i, column=j, value=row.get(col))
                 cell.fill = fill
+
+        # ── Totales finales ───────────────────────────────────────────
+        sub_fill = PatternFill("solid", fgColor="1E2D5E")
+        sub_font = Font(bold=True, color="93C5FD", size=10)
+        tot_fill = PatternFill("solid", fgColor="2D1800")
+        tot_font = Font(bold=True, color="FBBF24", size=11)
+
+        has_parroco = "parroco" in cols
+        if has_parroco:
+            from collections import Counter
+            counts = Counter(r.get("parroco") or "Sin párroco" for r in self._results)
+            ws.append([""] * len(cols))
+            for nombre, n in sorted(counts.items(), key=lambda x: (x[0] or "").upper()):
+                sub_vals = [""] * len(cols)
+                sub_vals[0] = f"Subtotal — {nombre}"
+                sub_vals[-1] = f"{n} registros"
+                ws.append(sub_vals)
+                row_idx = ws.max_row
+                for j in range(1, len(cols) + 1):
+                    ws.cell(row=row_idx, column=j).fill = sub_fill
+                    ws.cell(row=row_idx, column=j).font = sub_font
+
+        tot_vals = [""] * len(cols)
+        tot_vals[0] = "TOTAL GENERAL"
+        tot_vals[-1] = f"{len(self._results)} registros"
+        ws.append(tot_vals)
+        tot_idx = ws.max_row
+        for j in range(1, len(cols) + 1):
+            ws.cell(row=tot_idx, column=j).fill = tot_fill
+            ws.cell(row=tot_idx, column=j).font = tot_font
 
         wb.save(out)
         self.after(0, self._open_and_notify, out, "Excel")
