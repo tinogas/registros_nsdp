@@ -1,4 +1,5 @@
 import datetime
+import tkinter as tk
 import customtkinter as ctk
 from app.ui.search_view import SearchView, YEAR_ORDER_COL
 
@@ -60,13 +61,14 @@ class AppWindow(ctk.CTk):
             command=self._open_reports,
         ).pack(side="right", padx=(0, 6), pady=10)
 
-        ctk.CTkButton(
+        self._gear_btn = ctk.CTkButton(
             header, text="⚙", width=36,
             fg_color="transparent", border_width=1, border_color="gray40",
             hover_color="#1e1e3a", text_color=_MUTED,
             font=("Segoe UI", 14),
-            command=self._open_settings,
-        ).pack(side="right", padx=(0, 4), pady=10)
+            command=self._toggle_gear_menu,
+        )
+        self._gear_btn.pack(side="right", padx=(0, 4), pady=10)
 
         # ── Barra de pestañas ──────────────────────────────────────────
         self._tabbar = ctk.CTkFrame(self, corner_radius=0, fg_color=_TABBAR, height=44)
@@ -142,12 +144,33 @@ class AppWindow(ctk.CTk):
         from app.ui.report_view import ReportView
         ReportView(self)
 
+    def _toggle_gear_menu(self):
+        menu = tk.Menu(self, tearoff=0,
+                       bg="#1a1a2e", fg="#e2e8f0",
+                       activebackground="#1e40af", activeforeground="#ffffff",
+                       font=("Segoe UI", 10), bd=1)
+        menu.add_command(label="  ⚙  Datos de la Parroquia  ",
+                         command=self._open_settings)
+        menu.add_separator()
+        menu.add_command(label="  💾  Respaldos y Restauración  ",
+                         command=self._open_backup)
+        x = self._gear_btn.winfo_rootx()
+        y = self._gear_btn.winfo_rooty() + self._gear_btn.winfo_height()
+        try:
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
     def _open_settings(self):
         from app.ui.settings_view import IglesiaSettingsDialog
         def _on_saved():
             if isinstance(self._current_view, DashboardView):
                 self._current_view.refresh_iglesia()
         IglesiaSettingsDialog(self, on_saved=_on_saved)
+
+    def _open_backup(self):
+        from app.ui.backup_view import BackupView
+        BackupView(self)
 
     def _open_import(self):
         from app.ui.import_view import ImportDialog
@@ -235,12 +258,13 @@ class _IglesiaPanel(ctk.CTkFrame):
                 try:
                     from PIL import Image
                     img = Image.open(logo_path).convert("RGBA")
-                    img.thumbnail((56, 56), Image.LANCZOS)
+                    img = img.resize((60, 60), Image.LANCZOS)
                     self._logo_img = ctk.CTkImage(light_image=img, dark_image=img,
-                                                  size=(img.width, img.height))
+                                                  size=(60, 60))
                     ctk.CTkLabel(self._inner, image=self._logo_img, text="",
-                                 fg_color="transparent").pack(side="left",
-                                                              padx=(10, 4), pady=8)
+                                 fg_color="transparent",
+                                 width=64, height=64).pack(side="left",
+                                                           padx=(10, 6), pady=8)
                 except Exception:
                     pass
 
