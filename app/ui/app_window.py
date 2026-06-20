@@ -152,6 +152,9 @@ class AppWindow(ctk.CTk):
         menu.add_command(label="  ⚙  Datos de la Parroquia  ",
                          command=self._open_settings)
         menu.add_separator()
+        menu.add_command(label="  📥  Importar Excel  ",
+                         command=self._open_import)
+        menu.add_separator()
         menu.add_command(label="  💾  Respaldos y Restauración  ",
                          command=self._open_backup)
         x = self._gear_btn.winfo_rootx()
