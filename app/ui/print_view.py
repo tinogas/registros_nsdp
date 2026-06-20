@@ -74,6 +74,7 @@ class PrintView(ctk.CTkToplevel):
         self._drag_start = None
         self._bg_photo = None   # referencia para PIL PhotoImage
         self._show_bg = True    # True = mostrar imagen guía de fondo
+        self._updating_entries = False  # guard: evita que el trace de _sync_entries resetee coordenadas
 
         self._reload_layout()   # carga _layout, _pw, _ph, _scale, _canvas_w, _canvas_h
 
@@ -228,7 +229,7 @@ class PrintView(ctk.CTkToplevel):
             self._coord_entries[key] = (x_var, y_var, s_var)
 
     def _on_entry_change(self, key: str):
-        if key not in self._coord_entries:
+        if self._updating_entries or key not in self._coord_entries:
             return
         x_var, y_var, s_var = self._coord_entries[key]
         try:
@@ -412,10 +413,12 @@ class PrintView(ctk.CTkToplevel):
     def _sync_entries(self, key: str):
         if key not in self._coord_entries:
             return
+        self._updating_entries = True
         x_var, y_var, _ = self._coord_entries[key]
         fdef = self._layout[key]
         x_var.set(str(fdef.get("x", 0)))
         y_var.set(str(fdef.get("y", 0)))
+        self._updating_entries = False
 
     # ------------------------------------------------------------------
     # Acciones
