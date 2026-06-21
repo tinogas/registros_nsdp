@@ -25,8 +25,9 @@ _FIELDS = [
 
 _IMG_TYPES = [("Imagen", "*.png *.jpg *.jpeg *.bmp *.webp")]
 
-_LOGO_FILE = "logo_parroquia.png"
-_FOTO_FILE = "foto_parroquia.jpg"
+_LOGO_FILE         = "logo_parroquia.png"
+_LOGO_REPORTE_FILE = "logo_reporte.png"
+_FOTO_FILE         = "foto_parroquia.jpg"
 
 _BG    = "#0f0f1a"
 _HDR   = "#1a1a2e"
@@ -45,10 +46,12 @@ class IglesiaSettingsDialog(ctk.CTkToplevel):
 
         self._on_saved = on_saved
         self._entries: dict[str, ctk.CTkEntry] = {}
-        self._logo_src: str | None = None   # ruta original elegida
-        self._foto_src: str | None = None
-        self._logo_img: ctk.CTkImage | None = None
-        self._foto_img: ctk.CTkImage | None = None
+        self._logo_src:     str | None = None
+        self._logo_rep_src: str | None = None
+        self._foto_src:     str | None = None
+        self._logo_img:     ctk.CTkImage | None = None
+        self._logo_rep_img: ctk.CTkImage | None = None
+        self._foto_img:     ctk.CTkImage | None = None
 
         self._build()
         self._load_data()
@@ -89,6 +92,31 @@ class IglesiaSettingsDialog(ctk.CTkToplevel):
         ctk.CTkButton(logo_info, text="Seleccionar logo…", width=160,
                       fg_color="#1e40af", hover_color="#1e3a8a",
                       command=self._pick_logo).pack(anchor="w")
+
+        # ── Logo para Reportes PDF ────────────────────────────────────
+        self._section_label(scroll, "Logo para Reportes PDF")
+        logo_rep_frame = ctk.CTkFrame(scroll, fg_color=_HDR, corner_radius=8)
+        logo_rep_frame.pack(fill="x", pady=(4, 8))
+
+        self._logo_rep_label = ctk.CTkLabel(
+            logo_rep_frame, text="Sin logo", width=120, height=120,
+            fg_color="#16213e", corner_radius=6,
+            text_color=_MUTED, font=("Roboto", 10),
+        )
+        self._logo_rep_label.pack(side="left", padx=12, pady=12)
+
+        logo_rep_info = ctk.CTkFrame(logo_rep_frame, fg_color="transparent")
+        logo_rep_info.pack(side="left", fill="y", pady=12)
+        ctk.CTkLabel(logo_rep_info, text="Logo en negro (para reportes)",
+                     font=("Roboto", 11, "bold"), text_color=_TEXT,
+                     anchor="w").pack(anchor="w")
+        ctk.CTkLabel(logo_rep_info,
+                     text="Aparece en el encabezado de los reportes PDF.\nUsar versión en negro/escala de grises.\nTamaño recomendado: 200×200 px.",
+                     font=("Roboto", 10), text_color=_MUTED,
+                     justify="left", anchor="w").pack(anchor="w", pady=(4, 8))
+        ctk.CTkButton(logo_rep_info, text="Seleccionar logo reportes…", width=200,
+                      fg_color="#1e40af", hover_color="#1e3a8a",
+                      command=self._pick_logo_rep).pack(anchor="w")
 
         # ── Foto de la parroquia ──────────────────────────────────────
         self._section_label(scroll, "Foto de la Parroquia")
@@ -151,6 +179,12 @@ class IglesiaSettingsDialog(ctk.CTkToplevel):
             if logo_path.exists():
                 self._show_logo_preview(str(logo_path))
 
+        logo_rep_file = cfg.get("logo_reporte_file")
+        if logo_rep_file:
+            logo_rep_path = ASSETS_DIR / logo_rep_file
+            if logo_rep_path.exists():
+                self._show_logo_rep_preview(str(logo_rep_path))
+
         foto_file = cfg.get("foto_file")
         if foto_file:
             foto_path = ASSETS_DIR / foto_file
@@ -186,6 +220,25 @@ class IglesiaSettingsDialog(ctk.CTkToplevel):
         except Exception:
             pass
 
+    def _pick_logo_rep(self):
+        path = filedialog.askopenfilename(
+            parent=self, title="Seleccionar logo para reportes",
+            filetypes=_IMG_TYPES,
+        )
+        if path:
+            self._logo_rep_src = path
+            self._show_logo_rep_preview(path)
+
+    def _show_logo_rep_preview(self, path: str):
+        try:
+            img = Image.open(path).convert("RGBA")
+            img.thumbnail((120, 120), Image.LANCZOS)
+            self._logo_rep_img = ctk.CTkImage(light_image=img, dark_image=img,
+                                              size=(img.width, img.height))
+            self._logo_rep_label.configure(image=self._logo_rep_img, text="")
+        except Exception:
+            pass
+
     def _show_foto_preview(self, path: str):
         try:
             img = Image.open(path).convert("RGB")
@@ -209,6 +262,11 @@ class IglesiaSettingsDialog(ctk.CTkToplevel):
             dest = ASSETS_DIR / _LOGO_FILE
             shutil.copy2(self._logo_src, dest)
             cfg["logo_file"] = _LOGO_FILE
+
+        if self._logo_rep_src:
+            dest = ASSETS_DIR / _LOGO_REPORTE_FILE
+            shutil.copy2(self._logo_rep_src, dest)
+            cfg["logo_reporte_file"] = _LOGO_REPORTE_FILE
 
         if self._foto_src:
             dest = ASSETS_DIR / _FOTO_FILE

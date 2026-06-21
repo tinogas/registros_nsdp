@@ -4,7 +4,7 @@
   "colonia": "Villa Bonita",
   "direccion": "Blvd. Quintero Arce y Blvd. Villa Bonita",
   "codigo_postal": "83288",
-  "parroco_actual": "Gerardo Camacho",
+  "parroco_actual": "Gerardo Camacho Ponce",
   "telefono": "6622999999",
   "horario_oficina": "Lunes a Viernes 9:00 am - 6:00 pm",
   "secretaria": "Blanquita Robles",
@@ -12,5 +12,6 @@
   "facebook": "ndsp",
   "instagram": "ndsp",
   "logo_file": "logo_parroquia.png",
+  "logo_reporte_file": "logo_reporte.png",
   "foto_file": "foto_parroquia.jpg"
 }

@@ -151,10 +151,11 @@ def recalculate_folios(table: str):
     """
     Asigna folios secuenciales por año, reiniciando en 1 cada año.
     Ordenamiento dentro del año: por id de inserción.
+    Si se elimina el último registro, el siguiente insert retomará ese folio.
     """
     year_col = _YEAR_COL.get(table, "anio")
     with db() as conn:
-        conn.executescript(f"""
+        conn.execute(f"""
         WITH ranked AS (
             SELECT id,
                    ROW_NUMBER() OVER (
@@ -165,7 +166,7 @@ def recalculate_folios(table: str):
             WHERE {year_col} IS NOT NULL
         )
         UPDATE {table}
-        SET folio = (SELECT rn FROM ranked WHERE ranked.id = {table}.id);
+        SET folio = (SELECT rn FROM ranked WHERE ranked.id = {table}.id)
         """)
 
 
