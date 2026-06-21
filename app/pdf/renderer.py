@@ -15,8 +15,8 @@ from app.core.database import db
 from app.pdf.layout_editor import get_layout
 from app.utils.config import ASSETS_DIR
 
-# Media carta vertical: 5.5" × 8.5" = 396 × 612 pt
-PAGE_W, PAGE_H = 396.0, 612.0
+# Carta vertical: 8.5" × 11" = 612 × 792 pt
+PAGE_W, PAGE_H = 612.0, 792.0
 
 
 def _resolve_field(field_key: str, data: dict) -> str:

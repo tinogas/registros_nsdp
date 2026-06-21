@@ -7,7 +7,7 @@ from app.utils.config import LAYOUTS_DIR
 from app.pdf.templates import DEFAULT_LAYOUTS
 
 
-_PAGE_H = 612.0  # media carta vertical; layouts con y > este valor son obsoletos
+_PAGE_H = 792.0  # carta vertical; layouts con y > este valor son obsoletos
 
 def get_layout(table: str) -> dict:
     """Retorna el layout guardado o el layout por defecto.
