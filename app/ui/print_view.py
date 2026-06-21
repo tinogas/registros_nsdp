@@ -275,7 +275,7 @@ class PrintView(ctk.CTkToplevel):
         self._draw_preview()
 
     def _load_bg_image(self):
-        """Carga la imagen del formulario como fondo del canvas (solo form_mode)."""
+        """Carga la imagen del formulario sin distorsión sobre fondo blanco carta."""
         img_name = _FORM_IMAGES.get(self.table)
         if not img_name:
             return
@@ -284,9 +284,21 @@ class PrintView(ctk.CTkToplevel):
             return
         try:
             from PIL import Image, ImageTk
-            img = Image.open(img_path)
-            img = img.resize((self._canvas_w, self._canvas_h), Image.LANCZOS)
-            self._bg_photo = ImageTk.PhotoImage(img)
+            img = Image.open(img_path).convert("RGB")
+            # Escalar manteniendo proporciones originales del formulario físico
+            img_ratio = img.width / img.height
+            canvas_ratio = self._canvas_w / self._canvas_h
+            if img_ratio > canvas_ratio:
+                new_w = self._canvas_w
+                new_h = max(1, int(new_w / img_ratio))
+            else:
+                new_h = self._canvas_h
+                new_w = max(1, int(new_h * img_ratio))
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+            # Pegar en fondo blanco del tamaño del canvas (carta completa)
+            bg = Image.new("RGB", (self._canvas_w, self._canvas_h), "white")
+            bg.paste(img, (0, 0))
+            self._bg_photo = ImageTk.PhotoImage(bg)
         except Exception:
             self._bg_photo = None
 
