@@ -182,15 +182,18 @@ class DashboardView(ctk.CTkFrame):
         self._build()
 
     def _build(self):
-        ctk.CTkLabel(self, text="Resumen general",
+        scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        scroll.pack(fill="both", expand=True)
+
+        ctk.CTkLabel(scroll, text="Resumen general",
                      font=("Roboto", 20, "bold"), text_color=_TEXT).pack(pady=(24, 6))
 
-        self._iglesia_panel = _IglesiaPanel(self, fg_color="transparent")
+        self._iglesia_panel = _IglesiaPanel(scroll, fg_color="transparent")
         self._iglesia_panel.pack(fill="x", padx=30, pady=(0, 16))
 
         kpis = self._load_kpis()
 
-        cards = ctk.CTkFrame(self, fg_color="transparent")
+        cards = ctk.CTkFrame(scroll, fg_color="transparent")
         cards.pack(fill="x", padx=30, pady=(0, 20))
 
         for i, (table, label, color) in enumerate(SACRAMENTOS):
@@ -200,6 +203,8 @@ class DashboardView(ctk.CTkFrame):
                             on_click=lambda t=table: self._on_navigate(t) if self._on_navigate else None)
             card.grid(row=0, column=i, padx=8, pady=4, sticky="nsew")
             cards.grid_columnconfigure(i, weight=1)
+
+        self._build_charts(scroll)
 
     def _load_kpis(self) -> dict:
         from app.core.database import db
@@ -217,6 +222,75 @@ class DashboardView(ctk.CTkFrame):
                 except Exception:
                     result[table] = (0, 0)
         return result
+
+    def _load_chart_data(self) -> dict:
+        from app.core.database import db
+        result = {}
+        with db() as conn:
+            for table, _, _ in SACRAMENTOS:
+                try:
+                    year_col = YEAR_ORDER_COL[table]
+                    rows = conn.execute(
+                        f"SELECT {year_col}, COUNT(*) FROM {table} "
+                        f"WHERE {year_col} IS NOT NULL AND CAST({year_col} AS TEXT) != '' "
+                        f"GROUP BY {year_col} ORDER BY {year_col}"
+                    ).fetchall()
+                    result[table] = ([str(r[0]) for r in rows], [r[1] for r in rows])
+                except Exception:
+                    result[table] = ([], [])
+        return result
+
+    def _build_charts(self, parent):
+        try:
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        except ImportError:
+            return
+
+        chart_data = self._load_chart_data()
+
+        ctk.CTkLabel(parent, text="Registros por año",
+                     font=("Roboto", 16, "bold"), text_color=_TEXT).pack(pady=(4, 8))
+
+        charts_row = ctk.CTkFrame(parent, fg_color="transparent")
+        charts_row.pack(fill="x", padx=30, pady=(0, 28))
+
+        for i, (table, label, color) in enumerate(SACRAMENTOS):
+            years, counts = chart_data.get(table, ([], []))
+
+            fig, ax = plt.subplots(figsize=(2.2, 1.9), dpi=90)
+            fig.patch.set_facecolor("#16213e")
+            ax.set_facecolor("#1a1f36")
+
+            if years:
+                ax.bar(range(len(years)), counts, color=color, alpha=0.88, width=0.65)
+                step = max(1, len(years) // 5)
+                ax.set_xticks(range(0, len(years), step))
+                ax.set_xticklabels(
+                    [years[j] for j in range(0, len(years), step)],
+                    rotation=45, ha="right", fontsize=6, color="#a0aec0",
+                )
+            else:
+                ax.text(0.5, 0.5, "Sin datos", transform=ax.transAxes,
+                        ha="center", va="center", color="#a0aec0", fontsize=8)
+
+            ax.set_title(label, color="#e2e8f0", fontsize=8, pad=3, fontweight="bold")
+            ax.tick_params(axis="y", labelsize=6, colors="#a0aec0")
+            ax.tick_params(axis="x", bottom=False)
+            for spine in ax.spines.values():
+                spine.set_color("#2d3748")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+
+            fig.tight_layout(pad=0.5)
+
+            canvas_w = FigureCanvasTkAgg(fig, master=charts_row)
+            canvas_w.draw()
+            widget = canvas_w.get_tk_widget()
+            widget.configure(bg="#16213e", highlightthickness=0)
+            widget.grid(row=0, column=i, padx=6, sticky="nsew")
+            charts_row.grid_columnconfigure(i, weight=1)
+            plt.close(fig)
 
     def refresh_iglesia(self):
         self._iglesia_panel.refresh()

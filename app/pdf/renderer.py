@@ -18,6 +18,14 @@ from app.utils.config import ASSETS_DIR
 # Carta vertical: 8.5" × 11" = 612 × 792 pt
 PAGE_W, PAGE_H = 612.0, 792.0
 
+_SACRAMENT_TITLES = {
+    "bautismos":        "CONSTANCIA DE BAUTISMO",
+    "primera_comunion": "CONSTANCIA DE PRIMERA COMUNIÓN",
+    "confirmacion":     "CONSTANCIA DE CONFIRMACIÓN",
+    "matrimonios":      "CONSTANCIA DE MATRIMONIO",
+    "catecumenos":      "CONSTANCIA DE CATECÚMENO",
+}
+
 
 def _resolve_field(field_key: str, data: dict) -> str:
     """Convierte claves compuestas (_fecha, _padres, etc.) en texto listo para imprimir."""
@@ -97,8 +105,33 @@ def _resolve_field(field_key: str, data: dict) -> str:
     return ""
 
 
+def _draw_value_wrapped(c: canvas.Canvas, x: float, y: float, text: str,
+                        font: str, font_size: float, max_w: float):
+    """Dibuja texto con word-wrap de hasta 2 líneas si excede max_w."""
+    if not text:
+        return
+    line_h = int(font_size * 1.35)
+    if c.stringWidth(text, font, font_size) <= max_w:
+        c.drawString(x, y, text)
+        return
+    words = text.split()
+    line1, line2 = [], []
+    for word in words:
+        candidate = " ".join(line1 + [word])
+        if c.stringWidth(candidate, font, font_size) <= max_w:
+            line1.append(word)
+        else:
+            line2.append(word)
+    c.drawString(x, y, " ".join(line1))
+    if line2:
+        c.drawString(x, y - line_h, " ".join(line2))
+
+
 def _draw_layout(c: canvas.Canvas, layout: dict, data: dict):
     for key, field_def in layout.items():
+        # El título del sacramento se renderiza en el encabezado dinámico
+        if key == "titulo" and field_def.get("field") is None:
+            continue
         x = field_def.get("x", 80)
         y = field_def.get("y", 400)
         font_size = field_def.get("font_size", 12)
@@ -107,12 +140,10 @@ def _draw_layout(c: canvas.Canvas, layout: dict, data: dict):
         label = field_def.get("label", "")
         field_key = field_def.get("field")
 
-        font = "Helvetica-Bold" if bold else "Helvetica"
-        c.setFont(font, font_size)
         c.setFillColor(colors.black)
 
         if field_key is None:
-            # Texto fijo (título, encabezado)
+            c.setFont("Helvetica-Bold" if bold else "Helvetica", font_size)
             if center:
                 c.drawCentredString(x, y, label)
             else:
@@ -120,13 +151,15 @@ def _draw_layout(c: canvas.Canvas, layout: dict, data: dict):
         else:
             value = _resolve_field(field_key, data)
             if center:
+                c.setFont("Helvetica-Bold" if bold else "Helvetica", font_size)
                 c.drawCentredString(x, y, f"{label} {value}".strip())
             else:
-                c.setFont("Helvetica-Bold", font_size)
-                c.drawString(x, y, label)
                 c.setFont("Helvetica", font_size)
-                label_w = c.stringWidth(label, "Helvetica-Bold", font_size)
-                c.drawString(x + label_w + 6, y, value)
+                c.drawString(x, y, label)
+                label_w = c.stringWidth(label, "Helvetica", font_size)
+                val_x = x + label_w + 6
+                max_w = PAGE_W - val_x - 30
+                _draw_value_wrapped(c, val_x, y, value, "Helvetica", font_size, max_w)
 
 
 def _draw_border(c: canvas.Canvas):
@@ -137,34 +170,74 @@ def _draw_border(c: canvas.Canvas):
     c.rect(23, 23, PAGE_W - 46, PAGE_H - 46)
 
 
-def _draw_logo(c: canvas.Canvas):
-    logo_path = ASSETS_DIR / "logo_parroquia.png"
+def _draw_header(c: canvas.Canvas, cfg: dict, table: str):
+    """Encabezado completo: logo, datos de la iglesia, separadores y título del sacramento."""
+    # Logo
+    logo_path = ASSETS_DIR / cfg.get("logo_file", "logo_parroquia.png")
     if logo_path.exists():
         try:
-            c.drawImage(str(logo_path), 30, PAGE_H - 88, width=55, height=55,
+            c.drawImage(str(logo_path), 30, PAGE_H - 92, width=62, height=62,
                         preserveAspectRatio=True, mask="auto")
         except Exception:
             pass
 
+    # Nombre de la parroquia
+    nombre = cfg.get("nombre", "")
+    if nombre:
+        c.setFont("Helvetica-Bold", 10)
+        c.setFillColor(colors.HexColor("#2a2a6a"))
+        c.drawString(102, PAGE_H - 44, nombre)          # y ≈ 748
 
-def generate_pdf(table: str, data: dict, output_path: Path) -> Path:
-    layout = get_layout(table)
-    c = canvas.Canvas(str(output_path), pagesize=(PAGE_W, PAGE_H))
-    _draw_border(c)
-    _draw_logo(c)
+    # Dirección + ciudad
+    ciudad = cfg.get("ciudad", "")
+    direccion = cfg.get("direccion", "")
+    addr = "  ·  ".join(p for p in [direccion, ciudad] if p)
+    if addr:
+        c.setFont("Helvetica", 8.5)
+        c.setFillColor(colors.HexColor("#444444"))
+        max_addr_w = PAGE_W - 102 - 35
+        _draw_value_wrapped(c, 102, PAGE_H - 59, addr, "Helvetica", 8.5, max_addr_w)  # y ≈ 733
 
-    # Línea separadora bajo el encabezado
+    # Párroco
+    parroco = cfg.get("parroco_actual", "")
+    if parroco:
+        c.setFont("Helvetica-Oblique", 8.5)
+        c.setFillColor(colors.HexColor("#444444"))
+        c.drawString(102, PAGE_H - 74, parroco)         # y ≈ 718
+
+    # Separador 1 (bajo datos de iglesia)
     c.setStrokeColor(colors.HexColor("#4a4a8a"))
     c.setLineWidth(0.5)
-    c.line(28, PAGE_H - 96, PAGE_W - 28, PAGE_H - 96)
+    c.line(28, PAGE_H - 96, PAGE_W - 28, PAGE_H - 96)  # y = 696
 
-    # Pie de página
+    # Título del sacramento
+    title = _SACRAMENT_TITLES.get(table, "CONSTANCIA")
+    c.setFont("Helvetica-Bold", 13)
+    c.setFillColor(colors.HexColor("#2a2a6a"))
+    c.drawCentredString(PAGE_W / 2, PAGE_H - 112, title)  # y = 680
+
+    # Separador 2 (bajo título)
+    c.setStrokeColor(colors.HexColor("#4a4a8a"))
+    c.setLineWidth(0.5)
+    c.line(28, PAGE_H - 126, PAGE_W - 28, PAGE_H - 126)  # y = 666
+
+
+def generate_pdf(table: str, data: dict, output_path: Path,
+                 layout: dict | None = None) -> Path:
+    if layout is None:
+        layout = get_layout(table)
     from app.core.iglesia import load as _load_iglesia
     _cfg = _load_iglesia()
+
+    c = canvas.Canvas(str(output_path), pagesize=(PAGE_W, PAGE_H))
+    _draw_border(c)
+    _draw_header(c, _cfg, table)
+
+    # Pie de página
     c.setFont("Helvetica", 8)
     c.setFillColor(colors.gray)
     c.drawCentredString(PAGE_W / 2, 32,
-                        f"{_cfg['nombre']} — Documento oficial")
+                        f"{_cfg.get('nombre', '')} — Documento oficial")
 
     _draw_layout(c, layout, data)
     c.save()
@@ -202,7 +275,6 @@ def print_pdf(path: Path) -> None:
     """Abre el diálogo de impresión del sistema forzando orientación vertical (retrato)."""
     try:
         import win32api, win32print, win32con
-        # Forzar orientación retrato en la impresora predeterminada antes de abrir el diálogo
         try:
             pname = win32print.GetDefaultPrinter()
             ph = win32print.OpenPrinter(pname)
