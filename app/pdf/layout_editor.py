@@ -41,20 +41,24 @@ def reset_layout(table: str):
 # ── Layouts de formularios pre-impresos ──────────────────────────────────────
 
 def get_form_layout(table: str) -> dict:
-    """Retorna el layout de formulario guardado o el default de FORM_LAYOUTS."""
+    """Retorna el layout de formulario guardado o el default de FORM_LAYOUTS.
+    Descarta el JSON guardado si su page_size no coincide con el default actual."""
+    from app.pdf.templates import FORM_LAYOUTS
+    raw = FORM_LAYOUTS.get(table, {})
+    default_size = list(raw.get("page_size", [612, 792]))
+    default_fields = {k: dict(v) for k, v in raw.get("fields", {}).items()}
+
     path = LAYOUTS_DIR / f"{table}_forma.json"
     if path.exists():
         try:
             with open(path, encoding="utf-8") as f:
-                return json.load(f)
+                stored = json.load(f)
+            if list(stored.get("page_size", [])) == default_size:
+                return stored
+            path.unlink()  # page_size cambió — descartar calibración obsoleta
         except Exception:
             pass
-    from app.pdf.templates import FORM_LAYOUTS
-    raw = FORM_LAYOUTS.get(table, {})
-    return {
-        "page_size": list(raw.get("page_size", [612, 792])),
-        "fields": {k: dict(v) for k, v in raw.get("fields", {}).items()},
-    }
+    return {"page_size": default_size, "fields": default_fields}
 
 
 def save_form_layout(table: str, layout: dict):
