@@ -206,7 +206,7 @@ Diálogo de respaldos (920×520):
 ## Base de datos — Esquema
 
 ### `bautismos`
-`id, nombre, dia_nacimiento, mes_nacimiento, anio_nacimiento, lugar_nacimiento, papa, mama, dia_bautismo, mes_bautismo, anio_bautismo, ministro, padrino, madrina, parroco, registro_no, libro, pagina, acta, folio, fuente_archivo`
+`id, nombre, dia_nacimiento, mes_nacimiento, anio_nacimiento, lugar_nacimiento, papa, mama, dia_bautismo, mes_bautismo, anio_bautismo, ministro, padrinos1, padrinos2, parroco, registro_no, libro, pagina, acta, folio, fuente_archivo`
 
 ### `primera_comunion`
 `id, nombre, dia, mes, anio, mama, papa, padrinos, parroco, folio, fuente_archivo`

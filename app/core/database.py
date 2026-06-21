@@ -92,8 +92,8 @@ def init_db():
             mes_bautismo      TEXT,
             anio_bautismo     TEXT,
             ministro          TEXT,
-            padrino           TEXT,
-            madrina           TEXT,
+            padrinos1         TEXT,
+            padrinos2         TEXT,
             parroco           TEXT,
             registro_no       TEXT,
             libro             TEXT,
@@ -138,13 +138,21 @@ TABLES = list(_YEAR_COL.keys())
 
 
 def _migrate_folio_columns():
-    """Agrega la columna folio a las tablas que aún no la tienen."""
+    """Agrega la columna folio a las tablas que aún no la tienen; renombra padrino/madrina en bautismos."""
     with db() as conn:
         for table in TABLES:
             try:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN folio INTEGER")
             except Exception:
                 pass  # columna ya existe
+        try:
+            conn.execute("ALTER TABLE bautismos RENAME COLUMN padrino TO padrinos1")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE bautismos RENAME COLUMN madrina TO padrinos2")
+        except Exception:
+            pass
 
 
 def recalculate_folios(table: str):

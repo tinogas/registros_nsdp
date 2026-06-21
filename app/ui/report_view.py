@@ -30,7 +30,7 @@ REPORT_COLS = {
     "matrimonios":     ["pareja",  "dia", "mes", "anio", "presbitero", "parroco"],
     "primera_comunion":["nombre",  "dia", "mes", "anio", "mama",       "papa",    "parroco"],
     "confirmacion":    ["nombre",  "dia", "mes", "anio", "arzobispo",  "parroco"],
-    "bautismos":       ["nombre",  "dia_bautismo", "mes_bautismo", "anio_bautismo", "padrino", "madrina", "parroco"],
+    "bautismos":       ["nombre",  "dia_bautismo", "mes_bautismo", "anio_bautismo", "padrinos1", "padrinos2", "parroco"],
     "catecumenos":     ["nombre",  "dia", "mes", "anio", "padre", "madre"],
 }
 
@@ -48,8 +48,8 @@ REPORT_HEADERS = {
     "dia_bautismo":  "Día",
     "mes_bautismo":  "Mes",
     "anio_bautismo": "Año",
-    "padrino":       "Padrino",
-    "madrina":       "Madrina",
+    "padrinos1":     "Padrinos 1",
+    "padrinos2":     "Padrinos 2",
     "padre":         "Padre",
     "madre":         "Madre",
 }
