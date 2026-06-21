@@ -186,8 +186,9 @@ DEFAULT_LAYOUTS = {
 # ──────────────────────────────────────────────────────────────────────────────
 FORM_LAYOUTS = {
     "bautismos": {
-        # Canvas carta (612×792). Imagen del formulario se muestra sin distorsión dentro del canvas.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (15×15 cm).
         "page_size": [612, 792],
+        "form_size": [425, 425],
         "fields": {
             "nombre":           {"field": "nombre",             "x": 150, "y": 680, "font_size": 11},
             "fecha_nacimiento": {"field": "_fecha_nacimiento",  "x": 160, "y": 655, "font_size": 11},
@@ -203,8 +204,9 @@ FORM_LAYOUTS = {
         },
     },
     "primera_comunion": {
-        # Canvas carta (612×792). Imagen del formulario se muestra sin distorsión dentro del canvas.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (media carta landscape).
         "page_size": [612, 792],
+        "form_size": [612, 385],
         "fields": {
             "nombre":   {"field": "nombre",           "x": 306, "y": 660, "font_size": 12, "center": True},
             "padres":   {"field": "_padres_comunion", "x": 120, "y": 620, "font_size": 11},
@@ -216,8 +218,9 @@ FORM_LAYOUTS = {
         },
     },
     "confirmacion": {
-        # Canvas carta (612×792). Imagen del formulario se muestra sin distorsión dentro del canvas.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (media carta landscape).
         "page_size": [612, 792],
+        "form_size": [612, 397],
         "fields": {
             "nombre":    {"field": "nombre",     "x": 306, "y": 660, "font_size": 12, "center": True},
             "padres":    {"field": "_padres",    "x": 120, "y": 625, "font_size": 11},
@@ -233,8 +236,9 @@ FORM_LAYOUTS = {
         },
     },
     "matrimonios": {
-        # Canvas carta (612×792). Imagen del formulario se muestra sin distorsión dentro del canvas.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (media carta landscape).
         "page_size": [612, 792],
+        "form_size": [612, 390],
         "fields": {
             "pareja":     {"field": "pareja",     "x": 306, "y": 660, "font_size": 12, "center": True},
             "dia":        {"field": "dia",        "x": 100, "y": 620, "font_size": 11},

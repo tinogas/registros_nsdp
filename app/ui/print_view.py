@@ -101,10 +101,15 @@ class PrintView(ctk.CTkToplevel):
             form = get_form_layout(self.table)
             self._pw = float(form["page_size"][0])
             self._ph = float(form["page_size"][1])
+            fs = form.get("form_size", form["page_size"])
+            self._form_w = float(fs[0])
+            self._form_h = float(fs[1])
             self._layout = form["fields"]
         else:
             self._pw = float(PAGE_W)
             self._ph = float(PAGE_H)
+            self._form_w = self._pw
+            self._form_h = self._ph
             self._layout = get_layout(self.table)
 
         self._base_scale = _compute_scale(self._pw, self._ph)
@@ -275,7 +280,7 @@ class PrintView(ctk.CTkToplevel):
         self._draw_preview()
 
     def _load_bg_image(self):
-        """Carga la imagen del formulario sin distorsión sobre fondo blanco carta."""
+        """Carga la imagen del formulario a su tamaño físico real sobre fondo blanco carta."""
         img_name = _FORM_IMAGES.get(self.table)
         if not img_name:
             return
@@ -285,17 +290,11 @@ class PrintView(ctk.CTkToplevel):
         try:
             from PIL import Image, ImageTk
             img = Image.open(img_path).convert("RGB")
-            # Escalar manteniendo proporciones originales del formulario físico
-            img_ratio = img.width / img.height
-            canvas_ratio = self._canvas_w / self._canvas_h
-            if img_ratio > canvas_ratio:
-                new_w = self._canvas_w
-                new_h = max(1, int(new_w / img_ratio))
-            else:
-                new_h = self._canvas_h
-                new_w = max(1, int(new_h * img_ratio))
-            img = img.resize((new_w, new_h), Image.LANCZOS)
-            # Pegar en fondo blanco del tamaño del canvas (carta completa)
+            # Tamaño de display exacto según las dimensiones físicas del formulario
+            disp_w = max(1, int(self._form_w * self._scale))
+            disp_h = max(1, int(self._form_h * self._scale))
+            img = img.resize((disp_w, disp_h), Image.LANCZOS)
+            # Pegar en la esquina superior izquierda de un fondo blanco carta
             bg = Image.new("RGB", (self._canvas_w, self._canvas_h), "white")
             bg.paste(img, (0, 0))
             self._bg_photo = ImageTk.PhotoImage(bg)

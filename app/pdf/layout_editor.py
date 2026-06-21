@@ -58,7 +58,8 @@ def get_form_layout(table: str) -> dict:
             path.unlink()  # page_size cambió — descartar calibración obsoleta
         except Exception:
             pass
-    return {"page_size": default_size, "fields": default_fields}
+    default_form_size = list(raw.get("form_size", default_size))
+    return {"page_size": default_size, "form_size": default_form_size, "fields": default_fields}
 
 
 def save_form_layout(table: str, layout: dict):
