@@ -4,6 +4,7 @@ from app.utils.config import IGLESIA_JSON
 DEFAULTS: dict = {
     "nombre":          "Parroquia Nuestra Señora de la Paz",
     "ciudad":          "Hermosillo, Sonora",
+    "colonia":         "",
     "direccion":       "",
     "codigo_postal":   "",
     "parroco_actual":  "",

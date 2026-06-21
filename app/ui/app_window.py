@@ -302,6 +302,7 @@ class _IglesiaPanel(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self._logo_img = None
+        self._foto_img = None
         self._build()
         self.refresh()
 
@@ -317,10 +318,14 @@ class _IglesiaPanel(ctk.CTkFrame):
         for w in self._inner.winfo_children():
             w.destroy()
         self._logo_img = None
+        self._foto_img = None
 
         cfg = iglesia_load()
 
-        # ── Logo (solo si existe) ────────────────────────────────────
+        # ── Columna de imágenes: logo arriba, foto abajo ──────────────
+        img_col = ctk.CTkFrame(self._inner, fg_color="transparent")
+        img_col.pack(side="left", padx=(10, 6), pady=8)
+
         logo_file = cfg.get("logo_file")
         if logo_file:
             logo_path = ASSETS_DIR / logo_file
@@ -331,10 +336,24 @@ class _IglesiaPanel(ctk.CTkFrame):
                     img = img.resize((60, 60), Image.LANCZOS)
                     self._logo_img = ctk.CTkImage(light_image=img, dark_image=img,
                                                   size=(60, 60))
-                    ctk.CTkLabel(self._inner, image=self._logo_img, text="",
+                    ctk.CTkLabel(img_col, image=self._logo_img, text="",
                                  fg_color="transparent",
-                                 width=64, height=64).pack(side="left",
-                                                           padx=(10, 6), pady=8)
+                                 width=64, height=64).pack()
+                except Exception:
+                    pass
+
+        foto_file = cfg.get("foto_file")
+        if foto_file:
+            foto_path = ASSETS_DIR / foto_file
+            if foto_path.exists():
+                try:
+                    from PIL import Image
+                    fimg = Image.open(foto_path).convert("RGB")
+                    fimg = fimg.resize((90, 58), Image.LANCZOS)
+                    self._foto_img = ctk.CTkImage(light_image=fimg, dark_image=fimg,
+                                                  size=(90, 58))
+                    ctk.CTkLabel(img_col, image=self._foto_img, text="",
+                                 fg_color="transparent").pack(pady=(4, 0))
                 except Exception:
                     pass
 

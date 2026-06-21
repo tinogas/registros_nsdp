@@ -15,8 +15,8 @@ from app.core.database import db
 from app.pdf.layout_editor import get_layout
 from app.utils.config import ASSETS_DIR
 
-# Carta vertical: 8.5" × 11" = 612 × 792 pt
-PAGE_W, PAGE_H = 612.0, 792.0
+# Media carta vertical: 5.5" × 8.5" = 396 × 612 pt
+PAGE_W, PAGE_H = 396.0, 612.0
 
 _SACRAMENT_TITLES = {
     "bautismos":        "CONSTANCIA DE BAUTISMO",
@@ -176,7 +176,7 @@ def _draw_header(c: canvas.Canvas, cfg: dict, table: str):
     logo_path = ASSETS_DIR / cfg.get("logo_file", "logo_parroquia.png")
     if logo_path.exists():
         try:
-            c.drawImage(str(logo_path), 30, PAGE_H - 92, width=62, height=62,
+            c.drawImage(str(logo_path), 30, PAGE_H - 88, width=55, height=55,
                         preserveAspectRatio=True, mask="auto")
         except Exception:
             pass

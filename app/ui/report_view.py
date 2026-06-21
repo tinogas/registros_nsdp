@@ -374,7 +374,11 @@ class ReportView(ctk.CTkToplevel):
             c.setFont("Helvetica-Bold", 9)
             c.drawString(MARGIN + 6, y + 2, f"Párroco: {nombre}  ({n} registros)")
 
-        # ── Canvas y título ────────────────────────────────────────────
+        # ── Canvas ────────────────────────────────────────────────────
+        from app.core.iglesia import load as _load_iglesia
+        from app.utils.config import ASSETS_DIR as _ASSETS_DIR
+        _cfg = _load_iglesia()
+
         c = rl_canvas.Canvas(str(out), pagesize=landscape(LETTER))
 
         year  = self._year_var.get()
@@ -385,13 +389,58 @@ class ReportView(ctk.CTkToplevel):
         if mes != "Todos":
             titulo += f" / {mes}"
 
-        c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(colors.black)
-        c.drawString(MARGIN, ph - 40, titulo)
-        c.setFont("Helvetica", 9)
-        c.drawString(MARGIN, ph - 56, f"Total: {len(self._results)} registros")
+        # ── Encabezado con datos de la iglesia ────────────────────────
+        LOGO_H = 50
+        LOGO_Y = ph - MARGIN - LOGO_H
+        TEXT_X = MARGIN + LOGO_H + 8
 
-        y = ph - 80
+        logo_path = _ASSETS_DIR / (_cfg.get("logo_file") or "logo_parroquia.png")
+        if logo_path.exists():
+            try:
+                c.drawImage(str(logo_path), MARGIN, LOGO_Y, width=LOGO_H, height=LOGO_H,
+                            preserveAspectRatio=True, mask="auto")
+            except Exception:
+                pass
+
+        nombre_iglesia = _cfg.get("nombre", "")
+        if nombre_iglesia:
+            c.setFont("Helvetica-Bold", 10)
+            c.setFillColor(colors.HexColor("#2a2a6a"))
+            c.drawString(TEXT_X, ph - MARGIN - 14, nombre_iglesia)
+
+        ciudad    = _cfg.get("ciudad", "")
+        direccion = _cfg.get("direccion", "")
+        addr = "  ·  ".join(p for p in [direccion, ciudad] if p)
+        if addr:
+            c.setFont("Helvetica", 8)
+            c.setFillColor(colors.HexColor("#444444"))
+            c.drawString(TEXT_X, ph - MARGIN - 28, addr)
+
+        parroco_cfg = _cfg.get("parroco_actual", "")
+        if parroco_cfg:
+            c.setFont("Helvetica-Oblique", 8)
+            c.setFillColor(colors.HexColor("#444444"))
+            c.drawString(TEXT_X, ph - MARGIN - 42, parroco_cfg)
+
+        # Línea separadora bajo la info de la iglesia
+        sep1_y = LOGO_Y - 6
+        c.setStrokeColor(colors.HexColor("#4a4a8a"))
+        c.setLineWidth(0.5)
+        c.line(MARGIN, sep1_y, pw - MARGIN, sep1_y)
+
+        # Barra oscura con el nombre del sacramento (mismo estilo que encabezados de columna)
+        TITLE_BAR_H = 22
+        title_bar_y = sep1_y - 4 - TITLE_BAR_H   # borde inferior de la barra
+        c.setFillColor(colors.HexColor("#2d3a6e"))
+        c.rect(MARGIN, title_bar_y, USABLE, TITLE_BAR_H, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont("Helvetica-Bold", 11)
+        c.drawCentredString(pw / 2, title_bar_y + 6, titulo.upper())
+        c.setFont("Helvetica", 8)
+        c.drawRightString(pw - MARGIN, title_bar_y + 6, f"Total: {len(self._results)} registros")
+
+        # Los encabezados de columna van debajo con suficiente separación
+        y = title_bar_y - 18
         draw_col_header(y)
         y -= HDR_H + 4
 

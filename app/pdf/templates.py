@@ -1,179 +1,180 @@
 """
 Definición de campos y layout por defecto para cada tipo de constancia.
-Coordenadas en puntos PDF (72 pt = 1 pulgada). Carta vertical: 612 x 792 pt.
+Coordenadas en puntos PDF (72 pt = 1 pulgada). Media carta vertical: 396 x 612 pt.
 """
 
 # Cada campo: { "label": str, "field": str, "x": float, "y": float, "font_size": int }
-# Centro horizontal: 306. Margen izquierdo: 60. Espacio entre filas: ~42 pt.
+# Centro horizontal: 198. Margen izquierdo: 50. Espacio entre filas: ~32-36 pt.
+# Encabezado ocupa aprox. y=486..612 (126 pt). Contenido: y=80..470.
 DEFAULT_LAYOUTS = {
     # Matrimonios: más espacio tras "pareja" (nombres largos de contrayentes)
     "matrimonios": {
         "pareja": {
             "label": "Contrayentes:",
             "field": "pareja",
-            "x": 60, "y": 650, "font_size": 12,
+            "x": 50, "y": 470, "font_size": 11,
         },
         "fecha": {
             "label": "Fecha:",
             "field": "_fecha",
-            "x": 60, "y": 588, "font_size": 12,
+            "x": 50, "y": 434, "font_size": 11,
         },
         "presbitero": {
             "label": "Celebrante:",
             "field": "presbitero",
-            "x": 60, "y": 542, "font_size": 12,
+            "x": 50, "y": 398, "font_size": 11,
         },
         "testigos": {
             "label": "Testigos:",
             "field": "_testigos",
-            "x": 60, "y": 496, "font_size": 12,
+            "x": 50, "y": 362, "font_size": 11,
         },
         "parroco": {
             "label": "Párroco:",
             "field": "parroco",
-            "x": 60, "y": 450, "font_size": 12,
+            "x": 50, "y": 326, "font_size": 11,
         },
         "registro": {
             "label": "Registro:",
             "field": "_registro",
-            "x": 60, "y": 404, "font_size": 12,
+            "x": 50, "y": 290, "font_size": 11,
         },
     },
-    # Primera comunión: espaciado 46 pt
+    # Primera comunión: espaciado 36 pt
     "primera_comunion": {
         "nombre": {
             "label": "Nombre:",
             "field": "nombre",
-            "x": 60, "y": 650, "font_size": 12,
+            "x": 50, "y": 470, "font_size": 11,
         },
         "fecha": {
             "label": "Fecha:",
             "field": "_fecha",
-            "x": 60, "y": 604, "font_size": 12,
+            "x": 50, "y": 434, "font_size": 11,
         },
         "padres": {
             "label": "Padres:",
             "field": "_padres_comunion",
-            "x": 60, "y": 558, "font_size": 12,
+            "x": 50, "y": 398, "font_size": 11,
         },
         "padrinos": {
             "label": "Padrinos:",
             "field": "padrinos",
-            "x": 60, "y": 512, "font_size": 12,
+            "x": 50, "y": 362, "font_size": 11,
         },
         "parroco": {
             "label": "Párroco:",
             "field": "parroco",
-            "x": 60, "y": 466, "font_size": 12,
+            "x": 50, "y": 326, "font_size": 11,
         },
     },
-    # Confirmación: espaciado 52 pt para evitar encimamiento en campos largos
+    # Confirmación: espaciado 32 pt
     "confirmacion": {
         "nombre": {
             "label": "Nombre:",
             "field": "nombre",
-            "x": 60, "y": 650, "font_size": 12,
+            "x": 50, "y": 470, "font_size": 11,
         },
         "fecha": {
             "label": "Fecha:",
             "field": "_fecha",
-            "x": 60, "y": 598, "font_size": 12,
+            "x": 50, "y": 438, "font_size": 11,
         },
         "padres": {
             "label": "Padres:",
             "field": "_padres",
-            "x": 60, "y": 546, "font_size": 12,
+            "x": 50, "y": 406, "font_size": 11,
         },
         "padrinos": {
             "label": "Padrinos:",
             "field": "padrinos",
-            "x": 60, "y": 494, "font_size": 12,
+            "x": 50, "y": 374, "font_size": 11,
         },
         "arzobispo": {
             "label": "Arzobispo:",
             "field": "arzobispo",
-            "x": 60, "y": 442, "font_size": 12,
+            "x": 50, "y": 342, "font_size": 11,
         },
         "parroco": {
             "label": "Párroco:",
             "field": "parroco",
-            "x": 60, "y": 390, "font_size": 12,
+            "x": 50, "y": 310, "font_size": 11,
         },
         "registro": {
             "label": "Registro:",
             "field": "_registro",
-            "x": 60, "y": 338, "font_size": 12,
+            "x": 50, "y": 278, "font_size": 11,
         },
     },
-    # Bautismos: fuente reducida a 11 pt, espaciado 38 pt
+    # Bautismos: 9 campos, espaciado 32 pt
     "bautismos": {
         "nombre": {
             "label": "Nombre:",
             "field": "nombre",
-            "x": 60, "y": 650, "font_size": 11,
+            "x": 50, "y": 470, "font_size": 11,
         },
         "nacimiento": {
             "label": "Nacimiento:",
             "field": "_fecha_nacimiento",
-            "x": 60, "y": 612, "font_size": 11,
+            "x": 50, "y": 438, "font_size": 11,
         },
         "lugar_nacimiento": {
             "label": "Lugar de nacimiento:",
             "field": "lugar_nacimiento",
-            "x": 60, "y": 574, "font_size": 11,
+            "x": 50, "y": 406, "font_size": 11,
         },
         "padres": {
             "label": "Padres:",
             "field": "_padres",
-            "x": 60, "y": 536, "font_size": 11,
+            "x": 50, "y": 374, "font_size": 11,
         },
         "bautismo": {
             "label": "Fecha de bautismo:",
             "field": "_fecha_bautismo",
-            "x": 60, "y": 498, "font_size": 11,
+            "x": 50, "y": 342, "font_size": 11,
         },
         "padrinos": {
             "label": "Padrinos:",
             "field": "_padrinos_bautismo",
-            "x": 60, "y": 460, "font_size": 11,
+            "x": 50, "y": 310, "font_size": 11,
         },
         "ministro": {
             "label": "Ministro:",
             "field": "ministro",
-            "x": 60, "y": 422, "font_size": 11,
+            "x": 50, "y": 278, "font_size": 11,
         },
         "parroco": {
             "label": "Párroco:",
             "field": "parroco",
-            "x": 60, "y": 384, "font_size": 11,
+            "x": 50, "y": 246, "font_size": 11,
         },
         "registro": {
             "label": "Registro:",
             "field": "_registro_bautismo",
-            "x": 60, "y": 346, "font_size": 11,
+            "x": 50, "y": 214, "font_size": 11,
         },
     },
-    # Catecúmenos: espaciado 46 pt
+    # Catecúmenos: espaciado 36 pt
     "catecumenos": {
         "nombre": {
             "label": "Nombre:",
             "field": "nombre",
-            "x": 60, "y": 650, "font_size": 12,
+            "x": 50, "y": 470, "font_size": 11,
         },
         "fecha": {
             "label": "Fecha:",
             "field": "_fecha",
-            "x": 60, "y": 604, "font_size": 12,
+            "x": 50, "y": 434, "font_size": 11,
         },
         "padres": {
             "label": "Padres:",
             "field": "_padres_catecumeno",
-            "x": 60, "y": 558, "font_size": 12,
+            "x": 50, "y": 398, "font_size": 11,
         },
         "padrinos": {
             "label": "Padrinos:",
             "field": "padrinos",
-            "x": 60, "y": 512, "font_size": 12,
+            "x": 50, "y": 362, "font_size": 11,
         },
     },
 }
@@ -185,8 +186,9 @@ DEFAULT_LAYOUTS = {
 # ──────────────────────────────────────────────────────────────────────────────
 FORM_LAYOUTS = {
     "bautismos": {
-        # Carta vertical — formulario en mitad superior (y 420–700). Calibrar con drag-and-drop.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (15×15 cm).
         "page_size": [612, 792],
+        "form_size": [425, 425],
         "fields": {
             "nombre":           {"field": "nombre",             "x": 150, "y": 680, "font_size": 11},
             "fecha_nacimiento": {"field": "_fecha_nacimiento",  "x": 160, "y": 655, "font_size": 11},
@@ -202,8 +204,9 @@ FORM_LAYOUTS = {
         },
     },
     "primera_comunion": {
-        # Carta vertical — formulario en mitad superior (y 430–680). Calibrar con drag-and-drop.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (media carta landscape).
         "page_size": [612, 792],
+        "form_size": [612, 385],
         "fields": {
             "nombre":   {"field": "nombre",           "x": 306, "y": 660, "font_size": 12, "center": True},
             "padres":   {"field": "_padres_comunion", "x": 120, "y": 620, "font_size": 11},
@@ -215,8 +218,9 @@ FORM_LAYOUTS = {
         },
     },
     "confirmacion": {
-        # Carta vertical — formulario en mitad superior (y 440–680). Calibrar con drag-and-drop.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (media carta landscape).
         "page_size": [612, 792],
+        "form_size": [612, 397],
         "fields": {
             "nombre":    {"field": "nombre",     "x": 306, "y": 660, "font_size": 12, "center": True},
             "padres":    {"field": "_padres",    "x": 120, "y": 625, "font_size": 11},
@@ -232,8 +236,9 @@ FORM_LAYOUTS = {
         },
     },
     "matrimonios": {
-        # Carta vertical — formulario en mitad superior (y 450–680). Calibrar con drag-and-drop.
+        # Canvas carta (612×792). form_size = tamaño físico del formulario en pt (media carta landscape).
         "page_size": [612, 792],
+        "form_size": [612, 390],
         "fields": {
             "pareja":     {"field": "pareja",     "x": 306, "y": 660, "font_size": 12, "center": True},
             "dia":        {"field": "dia",        "x": 100, "y": 620, "font_size": 11},
