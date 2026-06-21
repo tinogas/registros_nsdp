@@ -89,6 +89,7 @@ NSDP/
 │   └── excel_backup/        # Copias de los Excel importados
 ├── assets/                  # Creado automáticamente
 │   ├── logo_parroquia.png   # Logo (subido por el usuario vía Configuración)
+│   ├── logo_reporte.png     # Logo en negro para encabezado de reportes PDF
 │   └── foto_parroquia.jpg   # Foto exterior
 ├── Formato_Bautizo.jpg      # Plantillas de formularios físicos pre-impresos
 ├── Formato_1ra_Comunion.jpg
@@ -106,7 +107,7 @@ NSDP/
 
 - **`init_db()`** — Crea las tablas si no existen, ejecuta migraciones de columna `folio`, y normaliza nombres de párrocos.
 - **`db()`** — Context manager para conexiones SQLite con commit automático y rollback en error.
-- **`recalculate_folios(table)`** — Asigna folios secuenciales por año usando `ROW_NUMBER()`.
+- **`recalculate_folios(table)`** — Asigna folios **secuenciales por año** usando `ROW_NUMBER() OVER (PARTITION BY año ORDER BY id)`. Se llama automáticamente tras cada inserción, edición o eliminación. Si se borra el último registro del año, el folio queda disponible para el próximo registro del mismo año.
 - **`homologar_parrocos()`** — Normaliza variantes tipográficas de los dos párrocos históricos a la forma canónica usando `LIKE`.
 
 ### `app/core/iglesia.py`
@@ -126,8 +127,9 @@ Maneja el archivo `data/iglesia.json` con los datos institucionales:
 | email | Correo electrónico |
 | facebook | Página de Facebook |
 | instagram | Cuenta de Instagram |
-| logo_file | Nombre del archivo de logo en `assets/` |
-| foto_file | Nombre del archivo de foto en `assets/` |
+| logo_file | Logo a color — pantallas e interfaz de la app |
+| logo_reporte_file | Logo en negro/escala de grises — encabezado de reportes PDF |
+| foto_file | Nombre del archivo de foto exterior en `assets/` |
 
 ### `app/core/backup.py`
 
@@ -156,14 +158,26 @@ Vista de listado para cada sacramento:
 - Muestra 5 columnas: Folio, Nombre/Pareja, Día, Mes, Año.
 - Búsqueda en tiempo real por cualquier campo.
 - Doble clic en una fila abre el detalle completo del registro.
-- Botones: Nuevo, Editar, Imprimir constancia, Imprimir en formulario, Eliminar.
+- Botones: Nuevo, Editar, Imprimir constancia, Imprimir en formulario.
+
+### `app/ui/form_view.py`
+
+Formulario de captura y edición de registros:
+- Muestra el folio asignado (solo lectura) para registros existentes.
+- Al pulsar **Eliminar** muestra un cuadro de confirmación con el folio y nombre del registro antes de proceder.
 
 ### `app/ui/report_view.py`
 
 Generación de reportes con:
-- Filtros por año, párroco y sacramento.
+- Filtros por año, mes y sacramento.
 - Vista treeview con subtotales por párroco y total general.
-- Exportación a PDF (con sección de totales) y Excel (con cortes de grupo por párroco).
+- **Exportación a PDF**:
+  - Encabezado completo (logo de reportes, nombre, dirección y párroco de la parroquia) repetido en **cada página**.
+  - Agrupación por párroco con franja de sección y conteo por grupo.
+  - Texto largo en celdas con **ajuste de línea automático** (word-wrap); el renglón se expande hacia abajo si no cabe en una línea.
+  - **Paginación** en pie de página: `Página X de N`.
+  - Sección final de **Resumen de Totales**: subtotal por párroco y total general.
+- Exportación a Excel con cortes de grupo por párroco y subtotales.
 - Orden: párroco → año → folio.
 
 ### `app/ui/print_view.py`
@@ -236,7 +250,8 @@ Menú ⚙ → **Importar Excel**:
 
 Menú ⚙ → **Datos de la Parroquia**:
 - Captura nombre, dirección, teléfono, redes sociales, logo y foto.
-- El logo aparece en el dashboard y en las constancias PDF.
+- **Logo de pantalla** (`logo_file`): aparece en el dashboard y en las constancias PDF.
+- **Logo para reportes** (`logo_reporte_file`): versión en negro/escala de grises que aparece en el encabezado de los reportes PDF. Si no se configura, se usa el logo de pantalla como respaldo.
 - Los datos se guardan en `data/iglesia.json`.
 
 ---
