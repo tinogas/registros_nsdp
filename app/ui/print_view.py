@@ -450,22 +450,26 @@ class PrintView(ctk.CTkToplevel):
         self._draw_preview()
 
     def _print(self):
+        from tkinter import messagebox
         tmp = Path(tempfile.gettempdir()) / "nsdp_constancias"
         tmp.mkdir(exist_ok=True)
         nombre = self._data.get("nombre") or self._data.get("pareja") or str(self.row_id)
         nombre_safe = "".join(c for c in nombre if c.isalnum() or c in " _-")[:40]
 
-        if self.form_mode:
-            form = get_form_layout(self.table)
-            form["fields"] = self._layout  # usa posiciones en memoria (no requiere guardar antes)
-            out = tmp / f"{self.table}_forma_{nombre_safe}_{self.row_id}.pdf"
-            generate_form_pdf(self.table, self._data, out, form_layout=form)
-        else:
-            out = tmp / f"{self.table}_{nombre_safe}_{self.row_id}.pdf"
-            generate_pdf(self.table, self._data, out)
+        try:
+            if self.form_mode:
+                form = get_form_layout(self.table)
+                form["fields"] = self._layout
+                out = tmp / f"{self.table}_forma_{nombre_safe}_{self.row_id}.pdf"
+                generate_form_pdf(self.table, self._data, out, form_layout=form)
+            else:
+                out = tmp / f"{self.table}_{nombre_safe}_{self.row_id}.pdf"
+                generate_pdf(self.table, self._data, out)
+        except Exception as e:
+            messagebox.showerror("Error al generar PDF", str(e), parent=self)
+            return
 
         try:
             print_pdf(out)
         except Exception as e:
-            from tkinter import messagebox
             messagebox.showerror("Error de impresión", str(e), parent=self)

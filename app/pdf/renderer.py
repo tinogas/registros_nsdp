@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -198,13 +199,26 @@ def _open_pdf(path: Path):
 
 
 def print_pdf(path: Path) -> None:
-    """Abre el diálogo de impresión del sistema (con preview y controles del controlador)."""
+    """Abre el diálogo de impresión del sistema forzando orientación vertical (retrato)."""
     try:
-        import win32api
-        # SW_SHOWNORMAL=1: abre la aplicación asociada al PDF y muestra su diálogo de impresión
+        import win32api, win32print, win32con
+        # Forzar orientación retrato en la impresora predeterminada antes de abrir el diálogo
+        try:
+            pname = win32print.GetDefaultPrinter()
+            ph = win32print.OpenPrinter(pname)
+            try:
+                pi2 = win32print.GetPrinter(ph, 2)
+                dm = pi2.get("pDevMode")
+                if dm is not None:
+                    dm.Orientation = win32con.DMORIENT_PORTRAIT
+                    dm.Fields = dm.Fields | win32con.DM_ORIENTATION
+                    win32print.SetPrinter(ph, 2, pi2, 0)
+            finally:
+                win32print.ClosePrinter(ph)
+        except Exception:
+            pass
         win32api.ShellExecute(0, "print", str(path), None, ".", 1)
     except Exception:
-        # Fallback: abrir con el visor predeterminado para que el usuario imprima desde ahí
         try:
             os.startfile(str(path))
         except Exception:
