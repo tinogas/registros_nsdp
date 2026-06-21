@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/registros.db
+data/layouts/
+*.xlsx
+# build_exe.spec  # incluido en repo
+dist/
+build/
