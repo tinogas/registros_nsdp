@@ -6,7 +6,6 @@ import os
 import tempfile
 from pathlib import Path
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import LETTER
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -15,7 +14,8 @@ from app.core.database import db
 from app.pdf.layout_editor import get_layout
 from app.utils.config import ASSETS_DIR
 
-PAGE_W, PAGE_H = LETTER   # 612 x 792 pt
+# Media carta vertical: 5.5" × 8.5" = 396 × 612 pt
+PAGE_W, PAGE_H = 396.0, 612.0
 
 
 def _resolve_field(field_key: str, data: dict) -> str:
@@ -131,16 +131,16 @@ def _draw_layout(c: canvas.Canvas, layout: dict, data: dict):
 def _draw_border(c: canvas.Canvas):
     c.setStrokeColor(colors.HexColor("#4a4a8a"))
     c.setLineWidth(2)
-    c.rect(36, 36, PAGE_W - 72, PAGE_H - 72)
+    c.rect(18, 18, PAGE_W - 36, PAGE_H - 36)
     c.setLineWidth(0.5)
-    c.rect(42, 42, PAGE_W - 84, PAGE_H - 84)
+    c.rect(23, 23, PAGE_W - 46, PAGE_H - 46)
 
 
 def _draw_logo(c: canvas.Canvas):
     logo_path = ASSETS_DIR / "logo_parroquia.png"
     if logo_path.exists():
         try:
-            c.drawImage(str(logo_path), 50, PAGE_H - 120, width=80, height=80,
+            c.drawImage(str(logo_path), 30, PAGE_H - 88, width=55, height=55,
                         preserveAspectRatio=True, mask="auto")
         except Exception:
             pass
@@ -148,16 +148,21 @@ def _draw_logo(c: canvas.Canvas):
 
 def generate_pdf(table: str, data: dict, output_path: Path) -> Path:
     layout = get_layout(table)
-    c = canvas.Canvas(str(output_path), pagesize=LETTER)
+    c = canvas.Canvas(str(output_path), pagesize=(PAGE_W, PAGE_H))
     _draw_border(c)
     _draw_logo(c)
+
+    # Línea separadora bajo el encabezado
+    c.setStrokeColor(colors.HexColor("#4a4a8a"))
+    c.setLineWidth(0.5)
+    c.line(28, PAGE_H - 96, PAGE_W - 28, PAGE_H - 96)
 
     # Pie de página
     from app.core.iglesia import load as _load_iglesia
     _cfg = _load_iglesia()
     c.setFont("Helvetica", 8)
     c.setFillColor(colors.gray)
-    c.drawCentredString(PAGE_W / 2, 50,
+    c.drawCentredString(PAGE_W / 2, 32,
                         f"{_cfg['nombre']} — Documento oficial")
 
     _draw_layout(c, layout, data)

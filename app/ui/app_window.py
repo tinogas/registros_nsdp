@@ -48,13 +48,6 @@ class AppWindow(ctk.CTk):
                      text_color=_RED).pack(side="left", padx=20)
 
         ctk.CTkButton(
-            header, text="Importar Excel", width=110,
-            fg_color="transparent", border_width=1, border_color="gray40",
-            hover_color="#1e1e3a", text_color=_MUTED,
-            command=self._open_import,
-        ).pack(side="right", padx=(0, 12), pady=10)
-
-        ctk.CTkButton(
             header, text="Reportes", width=90,
             fg_color="transparent", border_width=1, border_color="gray40",
             hover_color="#1e1e3a", text_color=_MUTED,

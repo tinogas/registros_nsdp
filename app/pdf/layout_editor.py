@@ -7,13 +7,20 @@ from app.utils.config import LAYOUTS_DIR
 from app.pdf.templates import DEFAULT_LAYOUTS
 
 
+_PAGE_H = 612.0  # media carta vertical; layouts con y > este valor son obsoletos
+
 def get_layout(table: str) -> dict:
-    """Retorna el layout guardado o el layout por defecto."""
+    """Retorna el layout guardado o el layout por defecto.
+    Descarta layouts diseñados para carta completa (y > 612)."""
     path = LAYOUTS_DIR / f"{table}.json"
     if path.exists():
         try:
             with open(path, encoding="utf-8") as f:
-                return json.load(f)
+                stored = json.load(f)
+            max_y = max((v.get("y", 0) for v in stored.values()), default=0)
+            if max_y <= _PAGE_H:
+                return stored
+            path.unlink()  # layout obsoleto (tamaño carta completa)
         except Exception:
             pass
     return {k: dict(v) for k, v in DEFAULT_LAYOUTS.get(table, {}).items()}
