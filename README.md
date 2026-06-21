@@ -109,6 +109,7 @@ NSDP/
 - **`db()`** — Context manager para conexiones SQLite con commit automático y rollback en error.
 - **`recalculate_folios(table)`** — Asigna folios **secuenciales por año** usando `ROW_NUMBER() OVER (PARTITION BY año ORDER BY id)`. Se llama automáticamente tras cada inserción, edición o eliminación. Si se borra el último registro del año, el folio queda disponible para el próximo registro del mismo año.
 - **`homologar_parrocos()`** — Normaliza variantes tipográficas de los dos párrocos históricos a la forma canónica usando `LIKE`.
+- **`get_sin_parroco_all()`** — Retorna un dict `{tabla: [filas]}` con los registros de bautismos, matrimonios, primera\_comunion y confirmacion donde el campo `parroco` está vacío, ordenados por año descendente.
 
 ### `app/core/iglesia.py`
 
@@ -179,6 +180,7 @@ Generación de reportes con:
   - Sección final de **Resumen de Totales**: subtotal por párroco y total general.
 - Exportación a Excel con cortes de grupo por párroco y subtotales.
 - Orden: párroco → año → folio.
+- **Auditoría "Sin Párroco → Excel"**: botón siempre visible que genera un Excel con cuatro hojas (Bautismos, Matrimonios, 1a Comunión, Confirmación) con los registros donde el campo párroco está vacío. Las columnas Folio, Año, Mes, Día, Párroco se resaltan en amarillo.
 
 ### `app/ui/print_view.py`
 
