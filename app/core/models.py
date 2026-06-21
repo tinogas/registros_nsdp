@@ -71,8 +71,8 @@ class Bautismo:
     mes_bautismo: Optional[str] = None
     anio_bautismo: Optional[str] = None
     ministro: Optional[str] = None
-    padrino: Optional[str] = None
-    madrina: Optional[str] = None
+    padrinos1: Optional[str] = None
+    padrinos2: Optional[str] = None
     parroco: Optional[str] = None
     registro_no: Optional[str] = None
     libro: Optional[str] = None

@@ -92,8 +92,8 @@ def init_db():
             mes_bautismo      TEXT,
             anio_bautismo     TEXT,
             ministro          TEXT,
-            padrino           TEXT,
-            madrina           TEXT,
+            padrinos1         TEXT,
+            padrinos2         TEXT,
             parroco           TEXT,
             registro_no       TEXT,
             libro             TEXT,
@@ -138,23 +138,32 @@ TABLES = list(_YEAR_COL.keys())
 
 
 def _migrate_folio_columns():
-    """Agrega la columna folio a las tablas que aún no la tienen."""
+    """Agrega la columna folio a las tablas que aún no la tienen; renombra padrino/madrina en bautismos."""
     with db() as conn:
         for table in TABLES:
             try:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN folio INTEGER")
             except Exception:
                 pass  # columna ya existe
+        try:
+            conn.execute("ALTER TABLE bautismos RENAME COLUMN padrino TO padrinos1")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE bautismos RENAME COLUMN madrina TO padrinos2")
+        except Exception:
+            pass
 
 
 def recalculate_folios(table: str):
     """
     Asigna folios secuenciales por año, reiniciando en 1 cada año.
     Ordenamiento dentro del año: por id de inserción.
+    Si se elimina el último registro, el siguiente insert retomará ese folio.
     """
     year_col = _YEAR_COL.get(table, "anio")
     with db() as conn:
-        conn.executescript(f"""
+        conn.execute(f"""
         WITH ranked AS (
             SELECT id,
                    ROW_NUMBER() OVER (
@@ -165,7 +174,7 @@ def recalculate_folios(table: str):
             WHERE {year_col} IS NOT NULL
         )
         UPDATE {table}
-        SET folio = (SELECT rn FROM ranked WHERE ranked.id = {table}.id);
+        SET folio = (SELECT rn FROM ranked WHERE ranked.id = {table}.id)
         """)
 
 
@@ -193,6 +202,30 @@ def homologar_parrocos():
                     f"WHERE parroco LIKE ? AND parroco != ?",
                     (canonical, pattern, canonical),
                 )
+
+
+def get_sin_parroco_all() -> dict:
+    """
+    Devuelve registros de bautismos, matrimonios, primera_comunion y confirmacion
+    donde parroco IS NULL o está vacío. Excluye catecumenos (sin columna parroco).
+    Retorna {table_name: [dict, ...]}, ordenados por año desc, id.
+    """
+    tablas = {
+        "bautismos":        "anio_bautismo",
+        "matrimonios":      "anio",
+        "primera_comunion": "anio",
+        "confirmacion":     "anio",
+    }
+    result = {}
+    with db() as conn:
+        for table, year_col in tablas.items():
+            rows = conn.execute(
+                f"SELECT * FROM {table} "
+                f"WHERE parroco IS NULL OR trim(parroco) = '' "
+                f"ORDER BY CAST({year_col} AS INTEGER) DESC, id",
+            ).fetchall()
+            result[table] = [dict(r) for r in rows]
+    return result
 
 
 def count_all() -> dict:

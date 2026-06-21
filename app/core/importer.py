@@ -214,7 +214,7 @@ def _import_bautismos(sheet, fuente: str, conn) -> int:
     conn.executemany(
         """INSERT INTO bautismos
            (nombre,dia_nacimiento,mes_nacimiento,anio_nacimiento,lugar_nacimiento,
-            papa,mama,dia_bautismo,mes_bautismo,anio_bautismo,ministro,padrino,madrina,
+            papa,mama,dia_bautismo,mes_bautismo,anio_bautismo,ministro,padrinos1,padrinos2,
             parroco,registro_no,libro,pagina,acta,fuente_archivo)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         batch,

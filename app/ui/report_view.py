@@ -10,7 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 import customtkinter as ctk
-from app.core.database import db
+from app.core.database import db, get_sin_parroco_all
 from app.ui.search_view import _style_treeview
 
 MESES = [
@@ -30,7 +30,7 @@ REPORT_COLS = {
     "matrimonios":     ["pareja",  "dia", "mes", "anio", "presbitero", "parroco"],
     "primera_comunion":["nombre",  "dia", "mes", "anio", "mama",       "papa",    "parroco"],
     "confirmacion":    ["nombre",  "dia", "mes", "anio", "arzobispo",  "parroco"],
-    "bautismos":       ["nombre",  "dia_bautismo", "mes_bautismo", "anio_bautismo", "padrino", "madrina", "parroco"],
+    "bautismos":       ["nombre",  "dia_bautismo", "mes_bautismo", "anio_bautismo", "padrinos1", "padrinos2", "parroco"],
     "catecumenos":     ["nombre",  "dia", "mes", "anio", "padre", "madre"],
 }
 
@@ -48,8 +48,8 @@ REPORT_HEADERS = {
     "dia_bautismo":  "Día",
     "mes_bautismo":  "Mes",
     "anio_bautismo": "Año",
-    "padrino":       "Padrino",
-    "madrina":       "Madrina",
+    "padrinos1":     "Padrinos 1",
+    "padrinos2":     "Padrinos 2",
     "padre":         "Padre",
     "madre":         "Madre",
 }
@@ -147,6 +147,10 @@ class ReportView(ctk.CTkToplevel):
         ctk.CTkButton(export, text="Exportar a Excel",
                       fg_color="#4ade80", text_color="black",
                       command=self._export_excel).pack(side="left")
+
+        ctk.CTkButton(export, text="Sin Párroco → Excel",
+                      fg_color="#92400e", hover_color="#78350f",
+                      command=self._export_sin_parroco).pack(side="left", padx=(8, 0))
 
         self._status = ctk.CTkLabel(export, text="")
         self._status.pack(side="left", padx=12)
@@ -312,25 +316,49 @@ class ReportView(ctk.CTkToplevel):
     def _do_export_pdf(self):
         import io
         from itertools import groupby
+        from collections import Counter as _Counter
         from reportlab.pdfgen import canvas as rl_canvas
         from reportlab.lib.pagesizes import LETTER, landscape
         from reportlab.lib import colors
+        from app.core.iglesia import load as _load_iglesia
+        from app.utils.config import ASSETS_DIR as _ASSETS_DIR
 
         tabla_label = self._tabla_var.get()
-        all_cols   = REPORT_COLS[self._table]
+        all_cols    = REPORT_COLS[self._table]
         has_parroco = "parroco" in all_cols
-
-        # En tablas con párroco, el agrupador se muestra como encabezado de sección
-        # y se omite de las columnas de cada fila → más espacio horizontal.
         cols = [c for c in all_cols if c != "parroco"] if has_parroco else all_cols
 
         out = Path(tempfile.gettempdir()) / f"reporte_{self._table}.pdf"
-        pw, ph = landscape(LETTER)
-        MARGIN  = 40
-        USABLE  = pw - 2 * MARGIN
-        ROW_H   = 14
-        HDR_H   = 18
-        GRP_H   = 16   # altura de la franja de grupo por párroco
+        pw, ph   = landscape(LETTER)
+        MARGIN   = 40
+        USABLE   = pw - 2 * MARGIN
+        ROW_H    = 14
+        HDR_H    = 18
+        GRP_H    = 16
+        LINE_H   = 10
+        LOGO_H   = 50
+        TBAR_H   = 22   # título del sacramento
+
+        # Altura fija del encabezado completo:
+        # logo(50) + sep(6) + gap(4) + barra_titulo(22) + gap_col(18) + col_hdr(18) + gap(4) = 122
+        DATA_START_Y = ph - MARGIN - LOGO_H - 6 - 4 - TBAR_H - 18 - HDR_H - 4
+
+        year   = self._year_var.get()
+        mes    = self._mes_var.get()
+        titulo = f"Reporte de {tabla_label}"
+        if year != "Todos":
+            titulo += f" — {year}"
+        if mes != "Todos":
+            titulo += f" / {mes}"
+
+        _cfg           = _load_iglesia()
+        nombre_iglesia = _cfg.get("nombre", "")
+        direccion      = _cfg.get("direccion", "")
+        ciudad         = _cfg.get("ciudad", "")
+        addr           = "  ·  ".join(p for p in [direccion, ciudad] if p)
+        parroco_cfg    = _cfg.get("parroco_actual", "")
+        logo_rep       = _cfg.get("logo_reporte_file") or _cfg.get("logo_file")
+        logo_path      = _ASSETS_DIR / logo_rep if logo_rep else None
 
         # ── Medir anchos de columna ────────────────────────────────────
         _buf = io.BytesIO()
@@ -341,14 +369,13 @@ class ReportView(ctk.CTkToplevel):
             header = REPORT_HEADERS.get(col, col.replace("_", " ").title()).upper()
             w = _mc.stringWidth(header, "Helvetica-Bold", 8) + 14
             for row in self._results:
-                val = str(row.get(col) or "")
-                w_val = _mc.stringWidth(val, "Helvetica", 8) + 10
+                w_val = _mc.stringWidth(str(row.get(col) or ""), "Helvetica", 8) + 10
                 if w_val > w:
                     w = w_val
             desired[col] = w
 
         total_desired = sum(desired.values()) or 1.0
-        scale     = min(1.0, USABLE / total_desired)
+        scale         = min(1.0, USABLE / total_desired)
         col_widths: dict[str, float] = {col: desired[col] * scale for col in cols}
 
         col_x: dict[str, float] = {}
@@ -357,7 +384,60 @@ class ReportView(ctk.CTkToplevel):
             col_x[col] = x
             x += col_widths[col]
 
-        # ── Funciones auxiliares de dibujo ─────────────────────────────
+        # ── Funciones de texto ─────────────────────────────────────────
+        def fit_text(text: str, fn: str, fs: float, max_w: float) -> str:
+            if _mc.stringWidth(text, fn, fs) <= max_w:
+                return text
+            while text and _mc.stringWidth(text + "…", fn, fs) > max_w:
+                text = text[:-1]
+            return (text + "…") if text else ""
+
+        def wrap_text(text: str, fn: str, fs: float, max_w: float) -> list:
+            if not text or _mc.stringWidth(text, fn, fs) <= max_w:
+                return [text or ""]
+            words = text.split()
+            lines, current = [], ""
+            for word in words:
+                test = (current + " " + word).strip()
+                if _mc.stringWidth(test, fn, fs) <= max_w:
+                    current = test
+                else:
+                    if current:
+                        lines.append(current)
+                    if _mc.stringWidth(word, fn, fs) > max_w:
+                        w = word
+                        while w and _mc.stringWidth(w + "…", fn, fs) > max_w:
+                            w = w[:-1]
+                        current = (w + "…") if w else ""
+                    else:
+                        current = word
+            if current:
+                lines.append(current)
+            return lines or [""]
+
+        # ── Pre-calcular filas (evita recalcular durante simulación y render) ──
+        def make_row_data(row: dict) -> tuple:
+            cl = {col: wrap_text(str(row.get(col) or ""), "Helvetica", 8,
+                                 col_widths[col] - 4) for col in cols}
+            ml = max(len(v) for v in cl.values())
+            return (row, cl, ml, max(ROW_H, LINE_H * ml + 4))
+
+        if has_parroco:
+            sorted_rows = sorted(self._results,
+                                 key=lambda r: (r.get("parroco") or "").upper())
+            grouped = [
+                (pname, [make_row_data(r) for r in grp])
+                for pname, grp in groupby(
+                    sorted_rows, key=lambda r: r.get("parroco") or "Sin párroco"
+                )
+            ]
+        else:
+            all_rows_data = [make_row_data(r) for r in self._results]
+
+        # ── Canvas ────────────────────────────────────────────────────
+        c = rl_canvas.Canvas(str(out), pagesize=landscape(LETTER))
+
+        # ── Funciones de dibujo (cierran sobre c) ─────────────────────
         def draw_col_header(y: float):
             c.setFillColor(colors.HexColor("#1a1a2e"))
             c.rect(MARGIN, y - 4, USABLE, HDR_H, fill=1, stroke=0)
@@ -365,7 +445,9 @@ class ReportView(ctk.CTkToplevel):
             c.setFont("Helvetica-Bold", 8)
             for col in cols:
                 label = REPORT_HEADERS.get(col, col.replace("_", " ").title()).upper()
-                c.drawString(col_x[col], y + 2, label)
+                c.drawString(col_x[col], y + 2,
+                             fit_text(label, "Helvetica-Bold", 8, col_widths[col] - 4))
+            c.setFont("Helvetica", 8)
 
         def draw_group_header(y: float, nombre: str, n: int):
             c.setFillColor(colors.HexColor("#2d3a6e"))
@@ -373,141 +455,162 @@ class ReportView(ctk.CTkToplevel):
             c.setFillColor(colors.HexColor("#93c5fd"))
             c.setFont("Helvetica-Bold", 9)
             c.drawString(MARGIN + 6, y + 2, f"Párroco: {nombre}  ({n} registros)")
-
-        # ── Canvas ────────────────────────────────────────────────────
-        from app.core.iglesia import load as _load_iglesia
-        from app.utils.config import ASSETS_DIR as _ASSETS_DIR
-        _cfg = _load_iglesia()
-
-        c = rl_canvas.Canvas(str(out), pagesize=landscape(LETTER))
-
-        year  = self._year_var.get()
-        mes   = self._mes_var.get()
-        titulo = f"Reporte de {tabla_label}"
-        if year != "Todos":
-            titulo += f" — {year}"
-        if mes != "Todos":
-            titulo += f" / {mes}"
-
-        # ── Encabezado con datos de la iglesia ────────────────────────
-        LOGO_H = 50
-        LOGO_Y = ph - MARGIN - LOGO_H
-        TEXT_X = MARGIN + LOGO_H + 8
-
-        logo_path = _ASSETS_DIR / (_cfg.get("logo_file") or "logo_parroquia.png")
-        if logo_path.exists():
-            try:
-                c.drawImage(str(logo_path), MARGIN, LOGO_Y, width=LOGO_H, height=LOGO_H,
-                            preserveAspectRatio=True, mask="auto")
-            except Exception:
-                pass
-
-        nombre_iglesia = _cfg.get("nombre", "")
-        if nombre_iglesia:
-            c.setFont("Helvetica-Bold", 10)
-            c.setFillColor(colors.HexColor("#2a2a6a"))
-            c.drawString(TEXT_X, ph - MARGIN - 14, nombre_iglesia)
-
-        ciudad    = _cfg.get("ciudad", "")
-        direccion = _cfg.get("direccion", "")
-        addr = "  ·  ".join(p for p in [direccion, ciudad] if p)
-        if addr:
             c.setFont("Helvetica", 8)
-            c.setFillColor(colors.HexColor("#444444"))
-            c.drawString(TEXT_X, ph - MARGIN - 28, addr)
 
-        parroco_cfg = _cfg.get("parroco_actual", "")
-        if parroco_cfg:
-            c.setFont("Helvetica-Oblique", 8)
-            c.setFillColor(colors.HexColor("#444444"))
-            c.drawString(TEXT_X, ph - MARGIN - 42, parroco_cfg)
+        def draw_full_header() -> float:
+            """Dibuja encabezado completo (logo + iglesia + título + col_hdr). Devuelve DATA_START_Y."""
+            LOGO_Y = ph - MARGIN - LOGO_H
+            TEXT_X = MARGIN + LOGO_H + 8
 
-        # Línea separadora bajo la info de la iglesia
-        sep1_y = LOGO_Y - 6
-        c.setStrokeColor(colors.HexColor("#4a4a8a"))
-        c.setLineWidth(0.5)
-        c.line(MARGIN, sep1_y, pw - MARGIN, sep1_y)
+            if logo_path and logo_path.exists():
+                try:
+                    c.drawImage(str(logo_path), MARGIN, LOGO_Y,
+                                width=LOGO_H, height=LOGO_H,
+                                preserveAspectRatio=True, mask="auto")
+                except Exception:
+                    pass
 
-        # Barra oscura con el nombre del sacramento (mismo estilo que encabezados de columna)
-        TITLE_BAR_H = 22
-        title_bar_y = sep1_y - 4 - TITLE_BAR_H   # borde inferior de la barra
-        c.setFillColor(colors.HexColor("#2d3a6e"))
-        c.rect(MARGIN, title_bar_y, USABLE, TITLE_BAR_H, fill=1, stroke=0)
-        c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", 11)
-        c.drawCentredString(pw / 2, title_bar_y + 6, titulo.upper())
-        c.setFont("Helvetica", 8)
-        c.drawRightString(pw - MARGIN, title_bar_y + 6, f"Total: {len(self._results)} registros")
+            if nombre_iglesia:
+                c.setFont("Helvetica-Bold", 10)
+                c.setFillColor(colors.HexColor("#2a2a6a"))
+                c.drawString(TEXT_X, ph - MARGIN - 14, nombre_iglesia)
+            if addr:
+                c.setFont("Helvetica", 8)
+                c.setFillColor(colors.HexColor("#444444"))
+                c.drawString(TEXT_X, ph - MARGIN - 28, addr)
+            if parroco_cfg:
+                c.setFont("Helvetica-Oblique", 8)
+                c.setFillColor(colors.HexColor("#444444"))
+                c.drawString(TEXT_X, ph - MARGIN - 42, parroco_cfg)
 
-        # Los encabezados de columna van debajo con suficiente separación
-        y = title_bar_y - 18
-        draw_col_header(y)
-        y -= HDR_H + 4
+            sep1_y = LOGO_Y - 6
+            c.setStrokeColor(colors.HexColor("#4a4a8a"))
+            c.setLineWidth(0.5)
+            c.line(MARGIN, sep1_y, pw - MARGIN, sep1_y)
 
-        # ── Datos ──────────────────────────────────────────────────────
-        c.setFont("Helvetica", 8)
+            tbar_y = sep1_y - 4 - TBAR_H
+            c.setFillColor(colors.HexColor("#2d3a6e"))
+            c.rect(MARGIN, tbar_y, USABLE, TBAR_H, fill=1, stroke=0)
+            c.setFillColor(colors.white)
+            c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(pw / 2, tbar_y + 6, titulo.upper())
+            c.setFont("Helvetica", 8)
+            c.drawRightString(pw - MARGIN, tbar_y + 6,
+                              f"Total: {len(self._results)} registros")
+
+            y = tbar_y - 18
+            draw_col_header(y)
+            return y - HDR_H - 4   # == DATA_START_Y
+
+        def draw_footer(page: int, total: int):
+            c.setFont("Helvetica", 8)
+            c.setFillColor(colors.HexColor("#888888"))
+            c.drawCentredString(pw / 2, 18, f"Página {page} de {total}")
+
+        # ── Simular páginas para saber el total antes de renderizar ───
+        def simulate_pages() -> int:
+            page = 1
+            y = DATA_START_Y
+
+            if has_parroco:
+                for _, grupo_data in grouped:
+                    if y < GRP_H + ROW_H + 44:
+                        page += 1
+                        y = DATA_START_Y
+                    y -= GRP_H + 2
+                    for _, _, _, rh in grupo_data:
+                        if y < 44 + (rh - ROW_H):
+                            page += 1
+                            y = DATA_START_Y
+                        y -= rh
+                    y -= 4
+            else:
+                for _, _, _, rh in all_rows_data:
+                    if y < 44 + (rh - ROW_H):
+                        page += 1
+                        y = DATA_START_Y
+                    y -= rh
+
+            # sección totales
+            y -= 8
+            if y < 50:
+                page += 1
+                y = DATA_START_Y
+            y -= 14 + HDR_H + 4
+            if has_parroco:
+                for _ in sorted(
+                    _Counter(r.get("parroco") or "Sin párroco"
+                             for r in self._results).items()
+                ):
+                    if y < 30:
+                        page += 1
+                        y = DATA_START_Y
+                    y -= ROW_H
+                if y < 30:
+                    page += 1
+
+            return page
+
+        total_pages = simulate_pages()
+
+        # ── Renderizar ─────────────────────────────────────────────────
+        current_page = 1
+        y = draw_full_header()
 
         if has_parroco:
-            # Ordenar por párroco (sort estable: preserva orden año/mes dentro del grupo)
-            sorted_rows = sorted(
-                self._results,
-                key=lambda r: (r.get("parroco") or "").upper(),
-            )
-            groups = groupby(sorted_rows, key=lambda r: r.get("parroco") or "Sin párroco")
-
-            for parroco_nombre, grupo_iter in groups:
-                grupo = list(grupo_iter)
-
-                # Si no cabe el encabezado + al menos una fila → nueva página
+            for parroco_nombre, grupo_data in grouped:
                 if y < GRP_H + ROW_H + 44:
+                    draw_footer(current_page, total_pages)
                     c.showPage()
-                    y = ph - 40
-                    draw_col_header(y)
-                    y -= HDR_H + 4
-                    c.setFont("Helvetica", 8)
+                    current_page += 1
+                    y = draw_full_header()
 
-                draw_group_header(y, parroco_nombre, len(grupo))
+                draw_group_header(y, parroco_nombre, len(grupo_data))
                 y -= GRP_H + 2
 
-                for i, row in enumerate(grupo):
-                    if y < 44:
+                for i, (row, cell_lines, max_ln, row_h) in enumerate(grupo_data):
+                    if y < 44 + (row_h - ROW_H):
+                        draw_footer(current_page, total_pages)
                         c.showPage()
-                        y = ph - 40
-                        draw_col_header(y)
-                        y -= HDR_H + 4
-                        c.setFont("Helvetica", 8)
+                        current_page += 1
+                        y = draw_full_header()
 
                     bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
                     c.setFillColor(bg)
-                    c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
+                    c.rect(MARGIN, y - 3 - LINE_H * (max_ln - 1), USABLE, row_h,
+                           fill=1, stroke=0)
                     c.setFillColor(colors.black)
                     for col in cols:
-                        c.drawString(col_x[col], y + 1, str(row.get(col) or ""))
-                    y -= ROW_H
+                        for li, line in enumerate(cell_lines[col]):
+                            c.drawString(col_x[col], y + 1 - li * LINE_H, line)
+                    y -= row_h
 
-                y -= 4   # separación visual entre grupos
+                y -= 4
         else:
-            for i, row in enumerate(self._results):
-                if y < 44:
+            for i, (row, cell_lines, max_ln, row_h) in enumerate(all_rows_data):
+                if y < 44 + (row_h - ROW_H):
+                    draw_footer(current_page, total_pages)
                     c.showPage()
-                    y = ph - 40
-                    draw_col_header(y)
-                    y -= HDR_H + 4
-                    c.setFont("Helvetica", 8)
+                    current_page += 1
+                    y = draw_full_header()
 
                 bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
                 c.setFillColor(bg)
-                c.rect(MARGIN, y - 3, USABLE, ROW_H, fill=1, stroke=0)
+                c.rect(MARGIN, y - 3 - LINE_H * (max_ln - 1), USABLE, row_h,
+                       fill=1, stroke=0)
                 c.setFillColor(colors.black)
                 for col in cols:
-                    c.drawString(col_x[col], y + 1, str(row.get(col) or ""))
-                y -= ROW_H
+                    for li, line in enumerate(cell_lines[col]):
+                        c.drawString(col_x[col], y + 1 - li * LINE_H, line)
+                y -= row_h
 
         # ── Sección de totales finales ─────────────────────────────────
         y -= 8
         if y < 50:
+            draw_footer(current_page, total_pages)
             c.showPage()
-            y = ph - 40
+            current_page += 1
+            y = draw_full_header()
 
         c.setStrokeColor(colors.HexColor("#4a5568"))
         c.line(MARGIN, y, MARGIN + USABLE, y)
@@ -521,15 +624,18 @@ class ReportView(ctk.CTkToplevel):
         y -= HDR_H + 4
 
         if has_parroco:
-            from collections import Counter as _Counter
-            parroco_counts = _Counter(r.get("parroco") or "Sin párroco" for r in self._results)
+            parroco_counts = _Counter(
+                r.get("parroco") or "Sin párroco" for r in self._results
+            )
             c.setFont("Helvetica", 8)
             for i, (nombre, n) in enumerate(
                 sorted(parroco_counts.items(), key=lambda x: (x[0] or "").upper())
             ):
                 if y < 30:
+                    draw_footer(current_page, total_pages)
                     c.showPage()
-                    y = ph - 40
+                    current_page += 1
+                    y = draw_full_header()
                     c.setFont("Helvetica", 8)
                 bg = colors.HexColor("#eef2ff") if i % 2 == 0 else colors.white
                 c.setFillColor(bg)
@@ -539,8 +645,10 @@ class ReportView(ctk.CTkToplevel):
                 c.drawRightString(MARGIN + USABLE - 6, y + 1, f"{n} registros")
                 y -= ROW_H
             if y < 30:
+                draw_footer(current_page, total_pages)
                 c.showPage()
-                y = ph - 40
+                current_page += 1
+                y = draw_full_header()
 
         c.setFillColor(colors.HexColor("#2d1800"))
         c.rect(MARGIN, y - 3, USABLE, ROW_H + 2, fill=1, stroke=0)
@@ -549,6 +657,7 @@ class ReportView(ctk.CTkToplevel):
         c.drawString(MARGIN + 6, y + 1, "TOTAL GENERAL")
         c.drawRightString(MARGIN + USABLE - 6, y + 1, f"{len(self._results)} registros")
 
+        draw_footer(current_page, total_pages)
         c.save()
         self.after(0, self._open_and_notify, out, "PDF")
 
@@ -659,3 +768,104 @@ class ReportView(ctk.CTkToplevel):
         except Exception:
             os.startfile(str(path))
         self._status.configure(text=f"{fmt} generado: {path.name}")
+
+    def _export_sin_parroco(self):
+        threading.Thread(target=self._do_export_sin_parroco, daemon=True).start()
+
+    def _do_export_sin_parroco(self):
+        import openpyxl
+        from openpyxl.styles import PatternFill, Font, Alignment
+
+        SHEET_CFG = {
+            "bautismos": {
+                "label":    "Bautismos",
+                "priority": ["folio", "anio_bautismo", "mes_bautismo", "dia_bautismo", "parroco"],
+                "rest":     ["nombre", "lugar_nacimiento", "papa", "mama",
+                             "padrinos1", "padrinos2", "ministro",
+                             "registro_no", "libro", "pagina", "acta"],
+                "headers":  {"anio_bautismo": "Año", "mes_bautismo": "Mes",
+                             "dia_bautismo": "Día", "folio": "Folio", "parroco": "Párroco",
+                             "nombre": "Nombre", "lugar_nacimiento": "Lugar Nacimiento",
+                             "papa": "Papá", "mama": "Mamá",
+                             "padrinos1": "Padrinos 1", "padrinos2": "Padrinos 2",
+                             "ministro": "Ministro", "registro_no": "Registro No.",
+                             "libro": "Libro", "pagina": "Página", "acta": "Acta"},
+            },
+            "matrimonios": {
+                "label":    "Matrimonios",
+                "priority": ["folio", "anio", "mes", "dia", "parroco"],
+                "rest":     ["pareja", "presbitero", "testigo1", "testigo2",
+                             "testigo3", "testigo4", "libro", "pagina", "partida"],
+                "headers":  {"folio": "Folio", "anio": "Año", "mes": "Mes", "dia": "Día",
+                             "parroco": "Párroco", "pareja": "Pareja",
+                             "presbitero": "Presbítero", "testigo1": "Testigo 1",
+                             "testigo2": "Testigo 2", "testigo3": "Testigo 3",
+                             "testigo4": "Testigo 4", "libro": "Libro",
+                             "pagina": "Página", "partida": "Partida"},
+            },
+            "primera_comunion": {
+                "label":    "1a Comunión",
+                "priority": ["folio", "anio", "mes", "dia", "parroco"],
+                "rest":     ["nombre", "mama", "papa", "padrinos"],
+                "headers":  {"folio": "Folio", "anio": "Año", "mes": "Mes", "dia": "Día",
+                             "parroco": "Párroco", "nombre": "Nombre",
+                             "mama": "Mamá", "papa": "Papá", "padrinos": "Padrinos"},
+            },
+            "confirmacion": {
+                "label":    "Confirmación",
+                "priority": ["folio", "anio", "mes", "dia", "parroco"],
+                "rest":     ["nombre", "papa", "mama", "padrinos",
+                             "arzobispo", "libro", "pagina", "partida"],
+                "headers":  {"folio": "Folio", "anio": "Año", "mes": "Mes", "dia": "Día",
+                             "parroco": "Párroco", "nombre": "Nombre",
+                             "papa": "Papá", "mama": "Mamá", "padrinos": "Padrinos",
+                             "arzobispo": "Arzobispo", "libro": "Libro",
+                             "pagina": "Página", "partida": "Partida"},
+            },
+        }
+
+        data = get_sin_parroco_all()
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        hdr_fill  = PatternFill("solid", fgColor="1A1A2E")
+        hdr_font  = Font(bold=True, color="FFFFFF", size=10)
+        pri_fill  = PatternFill("solid", fgColor="FFFDE7")
+        alt_fill  = PatternFill("solid", fgColor="EEF2FF")
+        none_font = Font(italic=True, color="999999", size=10)
+
+        for table, cfg in SHEET_CFG.items():
+            rows   = data.get(table, [])
+            cols   = cfg["priority"] + cfg["rest"]
+            hdrs   = cfg["headers"]
+            ws     = wb.create_sheet(title=cfg["label"])
+
+            for c_idx, col in enumerate(cols, 1):
+                cell = ws.cell(row=1, column=c_idx, value=hdrs.get(col, col))
+                cell.fill = hdr_fill
+                cell.font = hdr_font
+                cell.alignment = Alignment(horizontal="center")
+
+            if not rows:
+                cell = ws.cell(row=2, column=1, value="(Sin registros)")
+                cell.font = none_font
+            else:
+                for r_idx, row in enumerate(rows, 2):
+                    use_alt = (r_idx % 2 == 0)
+                    for c_idx, col in enumerate(cols, 1):
+                        cell = ws.cell(row=r_idx, column=c_idx,
+                                       value=row.get(col) if row.get(col) is not None else "")
+                        if c_idx <= len(cfg["priority"]):
+                            cell.fill = pri_fill
+                        elif use_alt:
+                            cell.fill = alt_fill
+
+            for col_cells in ws.columns:
+                max_len = max((len(str(c.value or "")) for c in col_cells), default=8)
+                ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 4, 40)
+
+        total = sum(len(v) for v in data.values())
+        out = Path(tempfile.gettempdir()) / "reporte_sin_parroco.xlsx"
+        wb.save(out)
+        label = f"Sin Párroco Excel ({total} registros)"
+        self.after(0, self._open_and_notify, out, label)

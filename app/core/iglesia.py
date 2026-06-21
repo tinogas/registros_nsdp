@@ -2,20 +2,21 @@ import json
 from app.utils.config import IGLESIA_JSON
 
 DEFAULTS: dict = {
-    "nombre":          "Parroquia Nuestra Señora de la Paz",
-    "ciudad":          "Hermosillo, Sonora",
-    "colonia":         "",
-    "direccion":       "",
-    "codigo_postal":   "",
-    "parroco_actual":  "",
-    "telefono":        "",
-    "horario_oficina": "",
-    "secretaria":      "",
-    "email":           "",
-    "facebook":        "",
-    "instagram":       "",
-    "logo_file":       None,
-    "foto_file":       None,
+    "nombre":              "Parroquia Nuestra Señora de la Paz",
+    "ciudad":              "Hermosillo, Sonora",
+    "colonia":             "",
+    "direccion":           "",
+    "codigo_postal":       "",
+    "parroco_actual":      "",
+    "telefono":            "",
+    "horario_oficina":     "",
+    "secretaria":          "",
+    "email":               "",
+    "facebook":            "",
+    "instagram":           "",
+    "logo_file":           None,   # logo a color — pantallas e interfaz
+    "logo_reporte_file":   None,   # logo en negro — encabezado de reportes PDF
+    "foto_file":           None,
 }
 
 

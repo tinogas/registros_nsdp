@@ -1,3 +1,4 @@
+import tkinter.messagebox as _mb
 import customtkinter as ctk
 from app.core.database import db, recalculate_folios
 
@@ -56,8 +57,8 @@ FIELDS = {
         ("mes_bautismo",     "Mes bautismo"),
         ("anio_bautismo",    "Año bautismo"),
         ("ministro",         "Ministro"),
-        ("padrino",          "Padrino"),
-        ("madrina",          "Madrina"),
+        ("padrinos1",        "Padrinos 1"),
+        ("padrinos2",        "Padrinos 2"),
         ("parroco",          "Párroco"),
         ("registro_no",      "Registro No."),
         ("libro",            "Libro"),
@@ -138,12 +139,12 @@ class FormDialog(ctk.CTkToplevel):
             ).fetchone()
         if not row:
             return
-        data = dict(row)
-        folio = data.get("folio")
+        self._loaded_data = dict(row)
+        folio = self._loaded_data.get("folio")
         if folio is not None:
             self._folio_label.configure(text=str(folio), text_color="white")
         for col, entry in self._entries.items():
-            val = data.get(col)
+            val = self._loaded_data.get(col)
             entry.delete(0, "end")
             if val is not None:
                 entry.insert(0, str(val))
@@ -174,12 +175,23 @@ class FormDialog(ctk.CTkToplevel):
         self.destroy()
 
     def _delete(self):
-        dialog = ctk.CTkInputDialog(
-            text=f"Escribe ELIMINAR para confirmar el borrado del registro #{self.row_id}:",
+        data = getattr(self, "_loaded_data", {})
+        folio = data.get("folio", "?")
+        name_field = "pareja" if self.table == "matrimonios" else "nombre"
+        nombre = data.get(name_field) or ""
+
+        linea_nombre = f"\n{name_field.capitalize()}: {nombre}" if nombre else ""
+        confirmado = _mb.askyesno(
             title="Confirmar eliminación",
+            message=(
+                f"¿Desea eliminar este registro?\n"
+                f"Folio: {folio}{linea_nombre}\n\n"
+                f"Esta acción no se puede deshacer."
+            ),
+            icon="warning",
+            parent=self,
         )
-        resp = dialog.get_input()
-        if resp and resp.strip().upper() == "ELIMINAR":
+        if confirmado:
             with db() as conn:
                 conn.execute(f"DELETE FROM {self.table} WHERE id=?", (self.row_id,))
             recalculate_folios(self.table)

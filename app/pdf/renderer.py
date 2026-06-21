@@ -67,12 +67,6 @@ def _resolve_field(field_key: str, data: dict) -> str:
         t = [data.get(f"testigo{i}") or "" for i in range(1, 5)]
         return ", ".join(x for x in t if x)
 
-    if field_key == "_padrinos_bautismo":
-        p = data.get("padrino") or ""
-        m = data.get("madrina") or ""
-        parts = [x for x in [p, m] if x]
-        return " y ".join(parts)
-
     if field_key == "_registro":
         libro = data.get("libro") or ""
         pag = data.get("pagina") or ""
