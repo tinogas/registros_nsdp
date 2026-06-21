@@ -11,6 +11,7 @@ from app.utils.config import ASSETS_DIR
 _FIELDS = [
     ("nombre",          "Nombre de la Iglesia"),
     ("ciudad",          "Ciudad"),
+    ("colonia",         "Colonia"),
     ("direccion",       "Dirección"),
     ("codigo_postal",   "Código Postal"),
     ("parroco_actual",  "Párroco Actual"),

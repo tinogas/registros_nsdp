@@ -394,7 +394,7 @@ class ReportView(ctk.CTkToplevel):
         LOGO_Y = ph - MARGIN - LOGO_H
         TEXT_X = MARGIN + LOGO_H + 8
 
-        logo_path = _ASSETS_DIR / _cfg.get("logo_file", "logo_parroquia.png")
+        logo_path = _ASSETS_DIR / (_cfg.get("logo_file") or "logo_parroquia.png")
         if logo_path.exists():
             try:
                 c.drawImage(str(logo_path), MARGIN, LOGO_Y, width=LOGO_H, height=LOGO_H,
@@ -422,25 +422,25 @@ class ReportView(ctk.CTkToplevel):
             c.setFillColor(colors.HexColor("#444444"))
             c.drawString(TEXT_X, ph - MARGIN - 42, parroco_cfg)
 
+        # Línea separadora bajo la info de la iglesia
         sep1_y = LOGO_Y - 6
         c.setStrokeColor(colors.HexColor("#4a4a8a"))
         c.setLineWidth(0.5)
         c.line(MARGIN, sep1_y, pw - MARGIN, sep1_y)
 
-        title_y = sep1_y - 16
-        c.setFont("Helvetica-Bold", 12)
-        c.setFillColor(colors.HexColor("#2a2a6a"))
-        c.drawCentredString(pw / 2, title_y, titulo)
+        # Barra oscura con el nombre del sacramento (mismo estilo que encabezados de columna)
+        TITLE_BAR_H = 22
+        title_bar_y = sep1_y - 4 - TITLE_BAR_H   # borde inferior de la barra
+        c.setFillColor(colors.HexColor("#2d3a6e"))
+        c.rect(MARGIN, title_bar_y, USABLE, TITLE_BAR_H, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont("Helvetica-Bold", 11)
+        c.drawCentredString(pw / 2, title_bar_y + 6, titulo.upper())
         c.setFont("Helvetica", 8)
-        c.setFillColor(colors.HexColor("#444444"))
-        c.drawRightString(pw - MARGIN, title_y, f"Total: {len(self._results)} registros")
+        c.drawRightString(pw - MARGIN, title_bar_y + 6, f"Total: {len(self._results)} registros")
 
-        sep2_y = title_y - 12
-        c.setStrokeColor(colors.HexColor("#4a4a8a"))
-        c.setLineWidth(0.5)
-        c.line(MARGIN, sep2_y, pw - MARGIN, sep2_y)
-
-        y = sep2_y - 8
+        # Los encabezados de columna van debajo con suficiente separación
+        y = title_bar_y - 18
         draw_col_header(y)
         y -= HDR_H + 4
 

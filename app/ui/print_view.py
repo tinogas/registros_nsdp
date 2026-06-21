@@ -75,15 +75,16 @@ class PrintView(ctk.CTkToplevel):
         self._bg_photo = None   # referencia para PIL PhotoImage
         self._show_bg = True    # True = mostrar imagen guía de fondo
         self._updating_entries = False  # guard: evita que el trace de _sync_entries resetee coordenadas
+        self._zoom_factor = 1.0
 
-        self._reload_layout()   # carga _layout, _pw, _ph, _scale, _canvas_w, _canvas_h
+        self._reload_layout()   # carga _layout, _pw, _ph, _scale, _base_scale, _canvas_w, _canvas_h
 
         titulo = self._data.get("nombre") or self._data.get("pareja") or f"#{row_id}"
         modo = "Formulario — " if form_mode else "Constancia — "
         self.title(f"{modo}{titulo}")
         win_h = max(self._canvas_h + 80, 660)
         self.geometry(f"{self._canvas_w + 360 + 40}x{win_h}")
-        self.resizable(False, False)
+        self.resizable(True, True)
         self.grab_set()
 
         self._build()
@@ -106,7 +107,8 @@ class PrintView(ctk.CTkToplevel):
             self._ph = float(PAGE_H)
             self._layout = get_layout(self.table)
 
-        self._scale = _compute_scale(self._pw, self._ph)
+        self._base_scale = _compute_scale(self._pw, self._ph)
+        self._scale = self._base_scale * self._zoom_factor
         self._canvas_w = int(self._pw * self._scale)
         self._canvas_h = int(self._ph * self._scale)
 
@@ -121,6 +123,7 @@ class PrintView(ctk.CTkToplevel):
                             height=self._canvas_h + _OFFSET_Y * 2)
         left.pack(side="left", padx=(0, 8), fill="y")
         left.pack_propagate(False)
+        self._left_frame = left
 
         self._canvas = tk.Canvas(
             left,
@@ -132,6 +135,22 @@ class PrintView(ctk.CTkToplevel):
         self._canvas.bind("<ButtonPress-1>",   self._on_press)
         self._canvas.bind("<B1-Motion>",        self._on_drag)
         self._canvas.bind("<ButtonRelease-1>",  self._on_release)
+
+        # Barra de zoom
+        zoom_bar = ctk.CTkFrame(left, fg_color="transparent")
+        zoom_bar.pack(fill="x", padx=4, pady=(2, 0))
+        ctk.CTkButton(zoom_bar, text="−", width=28, height=24,
+                      fg_color="#2d3748", hover_color="#374151",
+                      command=self._zoom_out).pack(side="left", padx=2)
+        ctk.CTkButton(zoom_bar, text="+", width=28, height=24,
+                      fg_color="#2d3748", hover_color="#374151",
+                      command=self._zoom_in).pack(side="left", padx=2)
+        ctk.CTkButton(zoom_bar, text="Ajustar", width=60, height=24,
+                      fg_color="#2d3748", hover_color="#374151",
+                      command=self._zoom_fit).pack(side="left", padx=2)
+        self._zoom_label = ctk.CTkLabel(zoom_bar, text="Ajustar",
+                                        font=("Roboto", 10), text_color="#a0aec0")
+        self._zoom_label.pack(side="left", padx=4)
 
         # ── Panel derecho: controles ──
         right = ctk.CTkFrame(main, fg_color="transparent", width=340)
@@ -372,6 +391,39 @@ class PrintView(ctk.CTkToplevel):
                     )
 
     # ------------------------------------------------------------------
+    # Zoom
+    # ------------------------------------------------------------------
+    def _zoom_in(self):
+        self._zoom_factor = min(self._zoom_factor * 1.25, 4.0)
+        self._apply_zoom()
+
+    def _zoom_out(self):
+        self._zoom_factor = max(self._zoom_factor / 1.25, 0.25)
+        self._apply_zoom()
+
+    def _zoom_fit(self):
+        self._zoom_factor = 1.0
+        self._apply_zoom()
+
+    def _apply_zoom(self):
+        self._scale = self._base_scale * self._zoom_factor
+        self._canvas_w = int(self._pw * self._scale)
+        self._canvas_h = int(self._ph * self._scale)
+        new_cw = self._canvas_w + _OFFSET_X * 2
+        new_ch = self._canvas_h + _OFFSET_Y * 2
+        self._canvas.configure(width=new_cw, height=new_ch)
+        self._left_frame.configure(width=new_cw, height=new_ch)
+        self._bg_photo = None  # fuerza recarga de la imagen al nuevo tamaño
+        win_w = new_cw + 360 + 40
+        win_h = max(new_ch + 80, 500)
+        self.geometry(f"{win_w}x{win_h}")
+        if self._zoom_factor == 1.0:
+            self._zoom_label.configure(text="Ajustar")
+        else:
+            self._zoom_label.configure(text=f"{int(self._zoom_factor * 100)}%")
+        self._draw_preview()
+
+    # ------------------------------------------------------------------
     # Drag-and-drop
     # ------------------------------------------------------------------
     def _on_press(self, event):
@@ -436,18 +488,20 @@ class PrintView(ctk.CTkToplevel):
         self.after(2000, lbl.destroy)
 
     def _reset_layout(self):
+        self._zoom_factor = 1.0
         if self.form_mode:
             reset_form_layout(self.table)
             form = get_form_layout(self.table)
             self._pw = float(form["page_size"][0])
             self._ph = float(form["page_size"][1])
             self._layout = form["fields"]
+            self._base_scale = _compute_scale(self._pw, self._ph)
         else:
             reset_layout(self.table)
             from app.pdf.templates import DEFAULT_LAYOUTS
             self._layout = {k: dict(v) for k, v in DEFAULT_LAYOUTS.get(self.table, {}).items()}
         self._build_fields_table()
-        self._draw_preview()
+        self._apply_zoom()
 
     def _print(self):
         from tkinter import messagebox
