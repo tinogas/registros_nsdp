@@ -204,6 +204,30 @@ def homologar_parrocos():
                 )
 
 
+def get_sin_parroco_all() -> dict:
+    """
+    Devuelve registros de bautismos, matrimonios, primera_comunion y confirmacion
+    donde parroco IS NULL o está vacío. Excluye catecumenos (sin columna parroco).
+    Retorna {table_name: [dict, ...]}, ordenados por año desc, id.
+    """
+    tablas = {
+        "bautismos":        "anio_bautismo",
+        "matrimonios":      "anio",
+        "primera_comunion": "anio",
+        "confirmacion":     "anio",
+    }
+    result = {}
+    with db() as conn:
+        for table, year_col in tablas.items():
+            rows = conn.execute(
+                f"SELECT * FROM {table} "
+                f"WHERE parroco IS NULL OR trim(parroco) = '' "
+                f"ORDER BY CAST({year_col} AS INTEGER) DESC, id",
+            ).fetchall()
+            result[table] = [dict(r) for r in rows]
+    return result
+
+
 def count_all() -> dict:
     with db() as conn:
         return {

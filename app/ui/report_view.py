@@ -10,7 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 import customtkinter as ctk
-from app.core.database import db
+from app.core.database import db, get_sin_parroco_all
 from app.ui.search_view import _style_treeview
 
 MESES = [
@@ -147,6 +147,10 @@ class ReportView(ctk.CTkToplevel):
         ctk.CTkButton(export, text="Exportar a Excel",
                       fg_color="#4ade80", text_color="black",
                       command=self._export_excel).pack(side="left")
+
+        ctk.CTkButton(export, text="Sin Párroco → Excel",
+                      fg_color="#92400e", hover_color="#78350f",
+                      command=self._export_sin_parroco).pack(side="left", padx=(8, 0))
 
         self._status = ctk.CTkLabel(export, text="")
         self._status.pack(side="left", padx=12)
@@ -764,3 +768,104 @@ class ReportView(ctk.CTkToplevel):
         except Exception:
             os.startfile(str(path))
         self._status.configure(text=f"{fmt} generado: {path.name}")
+
+    def _export_sin_parroco(self):
+        threading.Thread(target=self._do_export_sin_parroco, daemon=True).start()
+
+    def _do_export_sin_parroco(self):
+        import openpyxl
+        from openpyxl.styles import PatternFill, Font, Alignment
+
+        SHEET_CFG = {
+            "bautismos": {
+                "label":    "Bautismos",
+                "priority": ["folio", "anio_bautismo", "mes_bautismo", "dia_bautismo", "parroco"],
+                "rest":     ["nombre", "lugar_nacimiento", "papa", "mama",
+                             "padrinos1", "padrinos2", "ministro",
+                             "registro_no", "libro", "pagina", "acta"],
+                "headers":  {"anio_bautismo": "Año", "mes_bautismo": "Mes",
+                             "dia_bautismo": "Día", "folio": "Folio", "parroco": "Párroco",
+                             "nombre": "Nombre", "lugar_nacimiento": "Lugar Nacimiento",
+                             "papa": "Papá", "mama": "Mamá",
+                             "padrinos1": "Padrinos 1", "padrinos2": "Padrinos 2",
+                             "ministro": "Ministro", "registro_no": "Registro No.",
+                             "libro": "Libro", "pagina": "Página", "acta": "Acta"},
+            },
+            "matrimonios": {
+                "label":    "Matrimonios",
+                "priority": ["folio", "anio", "mes", "dia", "parroco"],
+                "rest":     ["pareja", "presbitero", "testigo1", "testigo2",
+                             "testigo3", "testigo4", "libro", "pagina", "partida"],
+                "headers":  {"folio": "Folio", "anio": "Año", "mes": "Mes", "dia": "Día",
+                             "parroco": "Párroco", "pareja": "Pareja",
+                             "presbitero": "Presbítero", "testigo1": "Testigo 1",
+                             "testigo2": "Testigo 2", "testigo3": "Testigo 3",
+                             "testigo4": "Testigo 4", "libro": "Libro",
+                             "pagina": "Página", "partida": "Partida"},
+            },
+            "primera_comunion": {
+                "label":    "1a Comunión",
+                "priority": ["folio", "anio", "mes", "dia", "parroco"],
+                "rest":     ["nombre", "mama", "papa", "padrinos"],
+                "headers":  {"folio": "Folio", "anio": "Año", "mes": "Mes", "dia": "Día",
+                             "parroco": "Párroco", "nombre": "Nombre",
+                             "mama": "Mamá", "papa": "Papá", "padrinos": "Padrinos"},
+            },
+            "confirmacion": {
+                "label":    "Confirmación",
+                "priority": ["folio", "anio", "mes", "dia", "parroco"],
+                "rest":     ["nombre", "papa", "mama", "padrinos",
+                             "arzobispo", "libro", "pagina", "partida"],
+                "headers":  {"folio": "Folio", "anio": "Año", "mes": "Mes", "dia": "Día",
+                             "parroco": "Párroco", "nombre": "Nombre",
+                             "papa": "Papá", "mama": "Mamá", "padrinos": "Padrinos",
+                             "arzobispo": "Arzobispo", "libro": "Libro",
+                             "pagina": "Página", "partida": "Partida"},
+            },
+        }
+
+        data = get_sin_parroco_all()
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        hdr_fill  = PatternFill("solid", fgColor="1A1A2E")
+        hdr_font  = Font(bold=True, color="FFFFFF", size=10)
+        pri_fill  = PatternFill("solid", fgColor="FFFDE7")
+        alt_fill  = PatternFill("solid", fgColor="EEF2FF")
+        none_font = Font(italic=True, color="999999", size=10)
+
+        for table, cfg in SHEET_CFG.items():
+            rows   = data.get(table, [])
+            cols   = cfg["priority"] + cfg["rest"]
+            hdrs   = cfg["headers"]
+            ws     = wb.create_sheet(title=cfg["label"])
+
+            for c_idx, col in enumerate(cols, 1):
+                cell = ws.cell(row=1, column=c_idx, value=hdrs.get(col, col))
+                cell.fill = hdr_fill
+                cell.font = hdr_font
+                cell.alignment = Alignment(horizontal="center")
+
+            if not rows:
+                cell = ws.cell(row=2, column=1, value="(Sin registros)")
+                cell.font = none_font
+            else:
+                for r_idx, row in enumerate(rows, 2):
+                    use_alt = (r_idx % 2 == 0)
+                    for c_idx, col in enumerate(cols, 1):
+                        cell = ws.cell(row=r_idx, column=c_idx,
+                                       value=row.get(col) if row.get(col) is not None else "")
+                        if c_idx <= len(cfg["priority"]):
+                            cell.fill = pri_fill
+                        elif use_alt:
+                            cell.fill = alt_fill
+
+            for col_cells in ws.columns:
+                max_len = max((len(str(c.value or "")) for c in col_cells), default=8)
+                ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 4, 40)
+
+        total = sum(len(v) for v in data.values())
+        out = Path(tempfile.gettempdir()) / "reporte_sin_parroco.xlsx"
+        wb.save(out)
+        label = f"Sin Párroco Excel ({total} registros)"
+        self.after(0, self._open_and_notify, out, label)
