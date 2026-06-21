@@ -12,5 +12,12 @@
     "archivo": "registros_20260621_143227.db",
     "estado": "OK",
     "mensaje": ""
+  },
+  {
+    "fecha": "2026-06-21 15:21:26",
+    "operacion": "Respaldo creado",
+    "archivo": "registros_20260621_152126.db",
+    "estado": "OK",
+    "mensaje": ""
   }
 ]

@@ -275,7 +275,7 @@ Menú ⚙ → **Respaldos y Restauración**:
 pyinstaller build_exe.spec --clean --noconfirm
 ```
 
-El ejecutable se genera en `dist\NSDP.exe` (~24 MB). Incluye:
+El ejecutable se genera en `dist\NSDP.exe` (~43.9 MB). Incluye:
 - CustomTkinter con todos sus temas
 - Pillow, ReportLab, openpyxl, pywin32
 - Plantillas de formularios (`Formato_*.jpg`)
