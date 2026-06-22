@@ -75,12 +75,42 @@ _CENTER_COLS = {"dia", "dia_bautismo", "anio", "anio_bautismo"}
 
 # Ancho máximo por columna en el treeview (limita columnas largas para que todas sean visibles)
 _COL_MAX_WIDTH = {
-    "padrinos1": 160,
-    "padrinos2": 160,
-    "padrinos":  160,
-    "nombre":    220,
-    "pareja":    240,
+    "padrinos1": 155,
+    "padrinos2": 155,
+    "padrinos":  155,
+    "nombre":    200,
+    "pareja":    220,
+    "parroco":   150,
+    "presbitero":150,
+    "arzobispo": 150,
 }
+
+# Ancho mínimo garantizado — evita que tkinter trunque con "…" columnas de texto corto pero ancho
+_COL_MIN_WIDTH = {
+    "mes":          150,   # "SEPTIEMBRE" cabe siempre
+    "mes_bautismo": 150,
+    "anio":          70,
+    "anio_bautismo": 70,
+    "dia":           50,
+    "dia_bautismo":  50,
+}
+
+# Columnas que se muestran en 2 renglones cuando el texto es largo
+_WRAP_COLS = {"padrinos1", "padrinos2", "padrinos"}
+_WRAP_LEN  = 24   # caracteres por línea antes de pasar al segundo renglón
+
+
+def _wrap_two_lines(text: str, max_chars: int = _WRAP_LEN) -> str:
+    """Divide el texto en máximo 2 líneas separadas por \\n."""
+    if len(text) <= max_chars:
+        return text
+    cut = text.rfind(" ", 0, max_chars)
+    if cut <= 0:
+        cut = max_chars
+    line2 = text[cut:].strip()
+    if len(line2) > max_chars:
+        line2 = line2[:max_chars] + "…"
+    return text[:cut] + "\n" + line2
 
 
 class ReportView(ctk.CTkToplevel):
@@ -216,13 +246,19 @@ class ReportView(ctk.CTkToplevel):
         self._render_table(cols)
 
     def _render_table(self, cols: list):
+        # Rowheight: 2 renglones cuando hay columnas con texto largo
+        has_wrap = any(c in _WRAP_COLS for c in cols)
+        from tkinter import ttk as _ttk
+        _ttk.Style().configure("NsdpTree.Treeview", rowheight=42 if has_wrap else 26)
+
         # Reconfigurar columnas del treeview
         self._tree.configure(columns=cols)
         for col in cols:
             header = REPORT_HEADERS.get(col, col.replace("_", " ").title())
             anchor = "center" if col in _CENTER_COLS else "w"
+            init_w = _COL_MIN_WIDTH.get(col, 80)
             self._tree.heading(col, text=header, anchor=anchor)
-            self._tree.column(col, width=80, minwidth=40, anchor=anchor, stretch=False)
+            self._tree.column(col, width=init_w, minwidth=init_w, anchor=anchor, stretch=False)
 
         # Limpiar y poblar
         for item in self._tree.get_children():
@@ -236,7 +272,12 @@ class ReportView(ctk.CTkToplevel):
                                  font=("Segoe UI", 10, "bold"))
 
         for i, row in enumerate(self._results[:2000]):
-            values = [str(row.get(col) or "") for col in cols]
+            values = []
+            for col in cols:
+                val = str(row.get(col) or "")
+                if col in _WRAP_COLS:
+                    val = _wrap_two_lines(val)
+                values.append(val)
             tag = "odd" if i % 2 else "even"
             self._tree.insert("", "end", values=values, tags=(tag,))
 
@@ -281,9 +322,25 @@ class ReportView(ctk.CTkToplevel):
                 if w > col_widths[col]:
                     col_widths[col] = w
 
-        # Longitud máxima en todos los registros de la BD (filtro actual)
+        # Para columnas de mes: medir cada cadena real desde la BD
+        # (avg_char * longitud subestima letras anchas como "SEPTIEMBRE")
+        _MES_COLS = {"mes", "mes_bautismo"}
+        for col in [c for c in cols if c in _MES_COLS]:
+            try:
+                with db() as conn:
+                    vals = conn.execute(
+                        f"SELECT DISTINCT {col} FROM {self._table} WHERE {col} IS NOT NULL"
+                    ).fetchall()
+                for (val,) in vals:
+                    w = data_font.measure(str(val).upper()) + PAD
+                    if w > col_widths[col]:
+                        col_widths[col] = w
+            except Exception:
+                pass
+
+        # Para el resto de columnas: estimación por longitud máxima de caracteres en BD
         year_col = YEAR_COL[self._table]
-        mes_col = MES_COL[self._table]
+        mes_col_name = MES_COL[self._table]
         year = self._year_var.get()
         mes = self._mes_var.get()
         conditions, params = [], []
@@ -291,28 +348,31 @@ class ReportView(ctk.CTkToplevel):
             conditions.append(f"{year_col} = ?")
             params.append(year)
         if mes and mes != "Todos":
-            conditions.append(f"UPPER({mes_col}) = ?")
+            conditions.append(f"UPPER({mes_col_name}) = ?")
             params.append(mes.upper())
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-        length_exprs = ", ".join(f"MAX(LENGTH(CAST({c} AS TEXT)))" for c in cols)
-        try:
-            with db() as conn:
-                maxlens = conn.execute(
-                    f"SELECT {length_exprs} FROM {self._table} {where}", params
-                ).fetchone()
-            avg_char = data_font.measure("n")
-            for i, col in enumerate(cols):
-                estimated = avg_char * (maxlens[i] or 0) + PAD
-                if estimated > col_widths[col]:
-                    col_widths[col] = estimated
-        except Exception:
-            pass
+        other_cols = [c for c in cols if c not in _MES_COLS]
+        if other_cols:
+            length_exprs = ", ".join(f"MAX(LENGTH(CAST({c} AS TEXT)))" for c in other_cols)
+            try:
+                with db() as conn:
+                    maxlens = conn.execute(
+                        f"SELECT {length_exprs} FROM {self._table} {where}", params
+                    ).fetchone()
+                avg_char = data_font.measure("m")  # letra media, más representativa que "n"
+                for i, col in enumerate(other_cols):
+                    estimated = avg_char * (maxlens[i] or 0) + PAD
+                    if estimated > col_widths[col]:
+                        col_widths[col] = estimated
+            except Exception:
+                pass
 
         for col in cols:
             max_w = _COL_MAX_WIDTH.get(col, MAX)
-            w = max(MIN, min(max_w, col_widths[col]))
-            self._tree.column(col, width=w, minwidth=MIN)
+            min_w = _COL_MIN_WIDTH.get(col, MIN)
+            w = max(min_w, min(max_w, col_widths[col]))
+            self._tree.column(col, width=w, minwidth=min_w)
 
     # ------------------------------------------------------------------
     # Exportaciones
@@ -387,6 +447,27 @@ class ReportView(ctk.CTkToplevel):
         total_desired = sum(desired.values()) or 1.0
         scale         = min(1.0, USABLE / total_desired)
         col_widths: dict[str, float] = {col: desired[col] * scale for col in cols}
+
+        # Anchos mínimos en PDF — evita que mes/año/día queden aplastados por el escalado
+        _PDF_MIN = {
+            "mes": 58, "mes_bautismo": 58,
+            "anio": 28, "anio_bautismo": 28,
+            "dia": 22, "dia_bautismo": 22,
+        }
+        for col, min_w in _PDF_MIN.items():
+            if col in col_widths and col_widths[col] < min_w:
+                col_widths[col] = min_w
+
+        # Si al aplicar mínimos el total supera USABLE, reducir solo las columnas flexibles
+        total_after = sum(col_widths.values())
+        if total_after > USABLE:
+            fixed_total = sum(col_widths[c] for c in cols if c in _PDF_MIN)
+            remaining   = max(0.0, USABLE - fixed_total)
+            flex_cols   = [c for c in cols if c not in _PDF_MIN]
+            flex_total  = sum(col_widths[c] for c in flex_cols) or 1.0
+            flex_scale  = remaining / flex_total
+            for col in flex_cols:
+                col_widths[col] *= flex_scale
 
         col_x: dict[str, float] = {}
         x = MARGIN + 2
