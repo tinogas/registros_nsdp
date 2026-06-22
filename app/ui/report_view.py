@@ -73,6 +73,15 @@ MES_COL = {
 # Columnas numéricas / cortas (ancla centrada en treeview y mínimo estrecho en PDF)
 _CENTER_COLS = {"dia", "dia_bautismo", "anio", "anio_bautismo"}
 
+# Ancho máximo por columna en el treeview (limita columnas largas para que todas sean visibles)
+_COL_MAX_WIDTH = {
+    "padrinos1": 160,
+    "padrinos2": 160,
+    "padrinos":  160,
+    "nombre":    220,
+    "pareja":    240,
+}
+
 
 class ReportView(ctk.CTkToplevel):
     def __init__(self, parent):
@@ -301,7 +310,8 @@ class ReportView(ctk.CTkToplevel):
             pass
 
         for col in cols:
-            w = max(MIN, min(MAX, col_widths[col]))
+            max_w = _COL_MAX_WIDTH.get(col, MAX)
+            w = max(MIN, min(max_w, col_widths[col]))
             self._tree.column(col, width=w, minwidth=MIN)
 
     # ------------------------------------------------------------------
