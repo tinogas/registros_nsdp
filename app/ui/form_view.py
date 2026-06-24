@@ -18,7 +18,7 @@ FIELDS = {
         ("parroco",    "Párroco"),
         ("libro",      "Libro"),
         ("pagina",     "Página"),
-        ("partida",    "Partida"),
+        ("acta",       "Acta"),
     ],
     "primera_comunion": [
         ("nombre",   "Nombre"),
@@ -43,7 +43,7 @@ FIELDS = {
         ("parroco",   "Párroco"),
         ("libro",     "Libro"),
         ("pagina",    "Página"),
-        ("partida",   "Partida"),
+        ("acta",      "Acta"),
     ],
     "bautismos": [
         ("nombre",           "Nombre"),

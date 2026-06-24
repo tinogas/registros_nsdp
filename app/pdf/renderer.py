@@ -70,14 +70,14 @@ def _resolve_field(field_key: str, data: dict) -> str:
     if field_key == "_registro":
         libro = data.get("libro") or ""
         pag = data.get("pagina") or ""
-        partida = data.get("partida") or ""
+        acta = data.get("acta") or ""
         parts = []
         if libro:
             parts.append(f"Libro {libro}")
         if pag:
             parts.append(f"Pág. {pag}")
-        if partida:
-            parts.append(f"Partida {partida}")
+        if acta:
+            parts.append(f"Acta {acta}")
         return ", ".join(parts)
 
     if field_key == "_registro_bautismo":

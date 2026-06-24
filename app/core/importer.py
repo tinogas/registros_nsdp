@@ -71,7 +71,7 @@ def _import_matrimonios(sheet, fuente: str, conn) -> int:
             _cell(row, 10),  # parroco
             _cell(row, 11),  # libro
             _cell(row, 12),  # pagina
-            _cell(row, 13),  # partida
+            _cell(row, 13),  # acta
             _cell(row, 21) if is_2023 else None,  # dias_extra
             _cell(row, 22) if is_2023 else None,  # mes_extra
             fuente,
@@ -80,7 +80,7 @@ def _import_matrimonios(sheet, fuente: str, conn) -> int:
     conn.executemany(
         """INSERT INTO matrimonios
            (numero,pareja,dia,mes,anio,presbitero,testigo1,testigo2,testigo3,testigo4,
-            parroco,libro,pagina,partida,dias_extra,mes_extra,fuente_archivo)
+            parroco,libro,pagina,acta,dias_extra,mes_extra,fuente_archivo)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         batch,
     )
@@ -160,7 +160,7 @@ def _import_confirmacion(sheet, fuente: str, conn) -> int:
 
     conn.executemany(
         """INSERT INTO confirmacion
-           (numero,nombre,dia,mes,anio,papa,mama,padrinos,arzobispo,parroco,libro,pagina,partida,fuente_archivo)
+           (numero,nombre,dia,mes,anio,papa,mama,padrinos,arzobispo,parroco,libro,pagina,acta,fuente_archivo)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         batch,
     )

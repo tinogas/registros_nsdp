@@ -42,7 +42,7 @@ def init_db():
             parroco      TEXT,
             libro        TEXT,
             pagina       TEXT,
-            partida      TEXT,
+            acta         TEXT,
             dias_extra   TEXT,
             mes_extra    TEXT,
             fuente_archivo TEXT
@@ -75,7 +75,7 @@ def init_db():
             parroco        TEXT,
             libro          TEXT,
             pagina         TEXT,
-            partida        TEXT,
+            acta           TEXT,
             fuente_archivo TEXT
         );
 
@@ -145,6 +145,11 @@ def _migrate_folio_columns():
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN folio INTEGER")
             except Exception:
                 pass  # columna ya existe
+        for tbl in ("matrimonios", "confirmacion"):
+            try:
+                conn.execute(f"ALTER TABLE {tbl} RENAME COLUMN partida TO acta")
+            except Exception:
+                pass
         try:
             conn.execute("ALTER TABLE bautismos RENAME COLUMN padrino TO padrinos1")
         except Exception:
