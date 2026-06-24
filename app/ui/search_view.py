@@ -164,7 +164,8 @@ class SearchView(ctk.CTkFrame):
 
         # Anclas por columna (sin ancho fijo aún — se calcula en _autosize_columns)
         for col in cols:
-            anchor = "center" if col in ("folio", "dia", "dia_bautismo", "anio", "anio_bautismo") else "w"
+            anchor = "center" if col in ("folio", "dia", "dia_bautismo", "anio", "anio_bautismo",
+                                          "libro", "pagina", "acta") else "w"
             self._tree.heading(col, text=headers[col], anchor=anchor)
             self._tree.column(col, width=80, minwidth=40, anchor=anchor, stretch=False)
 

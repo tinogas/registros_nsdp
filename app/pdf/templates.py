@@ -160,7 +160,7 @@ DEFAULT_LAYOUTS = {
         },
         "pagina": {
             "label": "Página:",
-            "field": "pagina",
+            "field": None,
             "x": 50, "y": 150, "font_size": 11,
         },
     },
