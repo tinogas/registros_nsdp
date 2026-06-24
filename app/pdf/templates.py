@@ -160,8 +160,13 @@ DEFAULT_LAYOUTS = {
         },
         "pagina": {
             "label": "Página:",
-            "field": None,
+            "field": "pagina",
             "x": 50, "y": 150, "font_size": 11,
+        },
+        "etiqueta_pagina": {
+            "label": "Página:",
+            "field": None,
+            "x": 50, "y": 118, "font_size": 11,
         },
     },
     # Catecúmenos: espaciado 36 pt
