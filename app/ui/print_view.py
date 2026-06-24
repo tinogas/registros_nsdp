@@ -364,9 +364,8 @@ class PrintView(ctk.CTkToplevel):
             anchor = "center" if center else "w"
 
             if self.form_mode:
-                # Solo dibuja el valor (sin etiqueta) en rojo intenso para ver dónde cae
                 value = _resolve_field(field_key, self._data) if field_key else ""
-                display = value or f"[{key}]"
+                display = (f"{label}{value}" if label else value) or f"[{key}]"
                 item = self._canvas.create_text(
                     cx, cy, text=display, font=font_style,
                     fill=color, anchor=anchor, tags=(key, "field"),

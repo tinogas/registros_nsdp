@@ -158,6 +158,11 @@ DEFAULT_LAYOUTS = {
             "field": "_registro_bautismo",
             "x": 50, "y": 182, "font_size": 11,
         },
+        "pagina": {
+            "label": "Página:     ",
+            "field": "pagina",
+            "x": 50, "y": 150, "font_size": 11,
+        },
     },
     # Catecúmenos: espaciado 36 pt
     "catecumenos": {
@@ -204,6 +209,7 @@ FORM_LAYOUTS = {
             "padrinos2":        {"field": "padrinos2",          "x": 320, "y": 572, "font_size": 11},
             "fecha_bautismo":   {"field": "_fecha_bautismo",    "x": 210, "y": 540, "font_size": 11},
             "libro":            {"field": "libro",              "x": 115, "y": 508, "font_size": 11},
+            "pagina":           {"field": "pagina", "label": "Página:     ", "x": 243, "y": 508, "font_size": 11},
             "acta":             {"field": "acta",               "x": 370, "y": 508, "font_size": 11},
             "ministro":         {"field": "ministro",           "x": 185, "y": 476, "font_size": 11},
             "parroco":          {"field": "parroco",            "x": 420, "y": 476, "font_size": 11},
@@ -238,7 +244,7 @@ FORM_LAYOUTS = {
             "parroco":   {"field": "parroco",    "x": 120, "y": 490, "font_size": 11},
             "libro":     {"field": "libro",      "x": 120, "y": 458, "font_size": 11},
             "pagina":    {"field": "pagina",     "x": 240, "y": 458, "font_size": 11},
-            "partida":   {"field": "partida",    "x": 360, "y": 458, "font_size": 11},
+            "acta":      {"field": "acta",        "x": 360, "y": 458, "font_size": 11},
         },
     },
     "matrimonios": {
@@ -258,7 +264,7 @@ FORM_LAYOUTS = {
             "parroco":    {"field": "parroco",    "x": 120, "y": 485, "font_size": 11},
             "libro":      {"field": "libro",      "x": 120, "y": 475, "font_size": 11},
             "pagina":     {"field": "pagina",     "x": 260, "y": 475, "font_size": 11},
-            "partida":    {"field": "partida",    "x": 100, "y": 450, "font_size": 11},
+            "acta":       {"field": "acta",        "x": 100, "y": 450, "font_size": 11},
         },
     },
 }

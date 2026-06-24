@@ -18,7 +18,7 @@ class Matrimonio:
     parroco: Optional[str] = None
     libro: Optional[str] = None
     pagina: Optional[str] = None
-    partida: Optional[str] = None
+    acta: Optional[str] = None
     dias_extra: Optional[str] = None
     mes_extra: Optional[str] = None
     fuente_archivo: Optional[str] = None
@@ -53,7 +53,7 @@ class Confirmacion:
     parroco: Optional[str] = None
     libro: Optional[str] = None
     pagina: Optional[str] = None
-    partida: Optional[str] = None
+    acta: Optional[str] = None
     fuente_archivo: Optional[str] = None
 
 

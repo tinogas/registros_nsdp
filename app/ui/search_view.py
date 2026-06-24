@@ -8,10 +8,13 @@ PAGE_SIZE = 25
 
 # Columnas visibles por tabla (folio + nombre/pareja + día/mes/año)
 TABLE_COLS = {
-    "matrimonios":     [("folio","Folio"),("pareja","Pareja"),("dia","Día"),("mes","Mes"),("anio","Año")],
+    "matrimonios":     [("folio","Folio"),("pareja","Pareja"),("dia","Día"),("mes","Mes"),("anio","Año"),
+                        ("libro","Libro"),("pagina","Página"),("acta","Acta")],
     "primera_comunion":[("folio","Folio"),("nombre","Nombre"),("dia","Día"),("mes","Mes"),("anio","Año")],
-    "confirmacion":    [("folio","Folio"),("nombre","Nombre"),("dia","Día"),("mes","Mes"),("anio","Año")],
-    "bautismos":       [("folio","Folio"),("nombre","Nombre"),("dia_bautismo","Día"),("mes_bautismo","Mes"),("anio_bautismo","Año")],
+    "confirmacion":    [("folio","Folio"),("nombre","Nombre"),("dia","Día"),("mes","Mes"),("anio","Año"),
+                        ("libro","Libro"),("pagina","Página"),("acta","Acta")],
+    "bautismos":       [("folio","Folio"),("nombre","Nombre"),("dia_bautismo","Día"),("mes_bautismo","Mes"),("anio_bautismo","Año"),
+                        ("libro","Libro"),("pagina","Página"),("acta","Acta")],
     "catecumenos":     [("folio","Folio"),("nombre","Nombre"),("dia","Día"),("mes","Mes"),("anio","Año")],
 }
 
@@ -50,7 +53,7 @@ COL_WIDTHS = {
     "presbitero":    165,
     "libro":          70,
     "pagina":         55,
-    "partida":        70,
+    "acta":           70,
     "padre":         155,
     "madre":         155,
 }
@@ -161,7 +164,8 @@ class SearchView(ctk.CTkFrame):
 
         # Anclas por columna (sin ancho fijo aún — se calcula en _autosize_columns)
         for col in cols:
-            anchor = "center" if col in ("folio", "dia", "dia_bautismo", "anio", "anio_bautismo") else "w"
+            anchor = "center" if col in ("folio", "dia", "dia_bautismo", "anio", "anio_bautismo",
+                                          "libro", "pagina", "acta") else "w"
             self._tree.heading(col, text=headers[col], anchor=anchor)
             self._tree.column(col, width=80, minwidth=40, anchor=anchor, stretch=False)
 
