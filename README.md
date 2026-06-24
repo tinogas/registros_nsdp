@@ -142,7 +142,7 @@ Maneja el archivo `data/iglesia.json` con los datos institucionales:
 ### `app/pdf/renderer.py`
 
 - **`generate_pdf(table, data, output_path)`** — Genera una constancia oficial en PDF tamaño carta vertical.
-- **`generate_form_pdf(table, data, output_path)`** — Genera un PDF con solo los valores de texto, para imprimir sobre formularios pre-impresos.
+- **`generate_form_pdf(table, data, output_path)`** — Genera un PDF con los datos para imprimir sobre formularios pre-impresos. Los campos pueden incluir una etiqueta opcional (`"label"`) que se antepone al valor (p. ej. `"Página:     255"` en bautismos).
 - **`print_pdf(path)`** — Envía el PDF directamente a la impresora predeterminada del sistema (sin abrir visor). Devuelve el nombre de la impresora usada.
 
 ### `app/ui/app_window.py`
@@ -156,10 +156,10 @@ Ventana principal (1200×720, redimensionable). Contiene:
 ### `app/ui/search_view.py`
 
 Vista de listado para cada sacramento:
-- Muestra 5 columnas: Folio, Nombre/Pareja, Día, Mes, Año.
-- Búsqueda en tiempo real por cualquier campo.
+- Muestra Folio, Nombre/Pareja, Día, Mes, Año; para Bautismos, Confirmación y Matrimonios también Libro, Página y Acta (centrados).
+- Búsqueda en tiempo real por nombre/pareja.
 - Doble clic en una fila abre el detalle completo del registro.
-- Botones: Nuevo, Editar, Imprimir constancia, Imprimir en formulario.
+- Botones: Nuevo, Editar, Imprimir constancia.
 
 ### `app/ui/form_view.py`
 
@@ -214,10 +214,10 @@ Diálogo de respaldos (920×520):
 `id, nombre, dia, mes, anio, mama, papa, padrinos, parroco, folio, fuente_archivo`
 
 ### `confirmacion`
-`id, numero, nombre, dia, mes, anio, papa, mama, padrinos, arzobispo, parroco, libro, pagina, partida, folio, fuente_archivo`
+`id, numero, nombre, dia, mes, anio, papa, mama, padrinos, arzobispo, parroco, libro, pagina, acta, folio, fuente_archivo`
 
 ### `matrimonios`
-`id, numero, pareja, dia, mes, anio, presbitero, testigo1, testigo2, testigo3, testigo4, parroco, libro, pagina, partida, dias_extra, mes_extra, folio, fuente_archivo`
+`id, numero, pareja, dia, mes, anio, presbitero, testigo1, testigo2, testigo3, testigo4, parroco, libro, pagina, acta, dias_extra, mes_extra, folio, fuente_archivo`
 
 ### `catecumenos`
 `id, nombre, dia, mes, anio, padre, madre, padrinos, folio, fuente_archivo`
