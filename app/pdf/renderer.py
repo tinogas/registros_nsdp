@@ -61,7 +61,7 @@ def _resolve_field(field_key: str, data: dict) -> str:
         papa = data.get(papa_key) or ""
         mama = data.get(mama_key) or ""
         parts = [p for p in [papa, mama] if p]
-        return " y ".join(parts)
+        return "  ".join(parts)
 
     if field_key == "_testigos":
         t = [data.get(f"testigo{i}") or "" for i in range(1, 5)]

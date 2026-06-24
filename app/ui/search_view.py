@@ -188,9 +188,15 @@ class SearchView(ctk.CTkFrame):
                                        state="disabled",
                                        command=self._edit_record)
         self._btn_edit.pack(side="left", padx=(0, 6))
+        self._btn_record = ctk.CTkButton(actions, text="Constancia", width=110,
+                                        state="disabled",
+                                        fg_color="#fb923c", text_color="black",
+                                        command=self._print_record)
+        self._btn_record.pack(side="left", padx=(0, 6))
+
         # Solo se muestra para sacramentos que tienen formulario pre-impreso físico
         _TABLES_WITH_FORM = {"bautismos", "primera_comunion", "confirmacion", "matrimonios"}
-        self._btn_form = ctk.CTkButton(actions, text="Imprimir constancia", width=175,
+        self._btn_form = ctk.CTkButton(actions, text="Imprimir formulario", width=155,
                                        state="disabled",
                                        fg_color="#4ade80", text_color="black",
                                        command=self._print_form)
@@ -341,6 +347,7 @@ class SearchView(ctk.CTkFrame):
             return
         self._selected_id = row_id
         self._btn_edit.configure(state="normal")
+        self._btn_record.configure(state="normal")
         self._btn_form.configure(state="normal")
 
     def _on_double_click(self, _event=None):
