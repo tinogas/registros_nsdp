@@ -295,7 +295,7 @@ def print_pdf(path: Path) -> None:
 # ── Modo formulario pre-impreso ───────────────────────────────────────────────
 
 def _draw_form_fields(c: canvas.Canvas, fields: dict, data: dict, page_w: float, page_h: float):
-    """Dibuja solo los valores (sin etiquetas ni decoración) sobre un formulario físico."""
+    """Dibuja valores sobre un formulario físico. Si el campo tiene 'label', lo antepone al valor."""
     for _key, fdef in fields.items():
         field_key = fdef.get("field")
         if not field_key:
@@ -307,12 +307,14 @@ def _draw_form_fields(c: canvas.Canvas, fields: dict, data: dict, page_w: float,
         y = fdef.get("y", 300)
         font_size = fdef.get("font_size", 11)
         center = fdef.get("center", False)
+        label = fdef.get("label", "")
+        text = f"{label}{value}" if label else value
         c.setFont("Helvetica", font_size)
         c.setFillColor(colors.black)
         if center:
-            c.drawCentredString(page_w / 2, y, value)
+            c.drawCentredString(page_w / 2, y, text)
         else:
-            c.drawString(x, y, value)
+            c.drawString(x, y, text)
 
 
 def generate_form_pdf(table: str, data: dict, output_path: Path,

@@ -193,7 +193,7 @@ class SearchView(ctk.CTkFrame):
         self._btn_form = ctk.CTkButton(actions, text="Imprimir constancia", width=175,
                                        state="disabled",
                                        fg_color="#4ade80", text_color="black",
-                                       command=self._print_record)
+                                       command=self._print_form)
         if self.table in _TABLES_WITH_FORM:
             self._btn_form.pack(side="left")
 

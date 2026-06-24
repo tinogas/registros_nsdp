@@ -209,7 +209,7 @@ FORM_LAYOUTS = {
             "padrinos2":        {"field": "padrinos2",          "x": 320, "y": 572, "font_size": 11},
             "fecha_bautismo":   {"field": "_fecha_bautismo",    "x": 210, "y": 540, "font_size": 11},
             "libro":            {"field": "libro",              "x": 115, "y": 508, "font_size": 11},
-            "pagina":           {"field": "pagina",             "x": 243, "y": 508, "font_size": 11},
+            "pagina":           {"field": "pagina", "label": "Página:     ", "x": 243, "y": 508, "font_size": 11},
             "acta":             {"field": "acta",               "x": 370, "y": 508, "font_size": 11},
             "ministro":         {"field": "ministro",           "x": 185, "y": 476, "font_size": 11},
             "parroco":          {"field": "parroco",            "x": 420, "y": 476, "font_size": 11},
