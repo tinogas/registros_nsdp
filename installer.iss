@@ -44,18 +44,15 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "Crear icono en el &escritorio"; GroupDescription: "Iconos adicionales:"; Flags: unchecked
 
 [Dirs]
-; Dar permisos de escritura a todos los usuarios en la carpeta data
-; (necesario para que la app pueda crear/modificar la base de datos)
-Name: "{app}\data"; Permissions: users-full
-Name: "{app}\data\backups"; Permissions: users-full
-Name: "{app}\data\excel_backup"; Permissions: users-full
+; Crear directorio de datos del usuario en AppData (escribible sin admin)
+Name: "{userappdata}\NSDP\data"; Flags: uninsneveruninstall
 
 [Files]
 ; Ejecutable principal (PyInstaller one-file bundle)
 Source: "{#SourceDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
-; Configuración inicial de la parroquia (no sobreescribir si ya existe)
-Source: "data\iglesia.json"; DestDir: "{app}\data"; Flags: onlyifdoesntexist
+; Configuración inicial de la parroquia en AppData (no sobreescribir si ya existe)
+Source: "data\iglesia.json"; DestDir: "{userappdata}\NSDP\data"; Flags: onlyifdoesntexist uninsneveruninstall
 
 [Icons]
 Name: "{group}\{#AppFullName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppExeName}"
@@ -66,10 +63,7 @@ Name: "{autodesktop}\{#AppFullName}"; Filename: "{app}\{#AppExeName}"; Tasks: de
 Filename: "{app}\{#AppExeName}"; Description: "Iniciar {#AppFullName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; Preservar la base de datos y datos del usuario al desinstalar
-Type: dirifempty; Name: "{app}\data\backups"
-Type: dirifempty; Name: "{app}\data\excel_backup"
-Type: dirifempty; Name: "{app}\data"
+; Solo eliminar el directorio de instalación si quedó vacío
 Type: dirifempty; Name: "{app}"
 
 [Code]
