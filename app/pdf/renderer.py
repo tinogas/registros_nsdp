@@ -265,31 +265,53 @@ def _open_pdf(path: Path):
         os.startfile(str(path))
 
 
-def print_pdf(path: Path) -> None:
-    """Abre el diálogo de impresión del sistema forzando orientación vertical (retrato)."""
+def _find_pdf_printer() -> str | None:
+    """Busca Acrobat Reader o SumatraPDF en rutas estándar de Windows."""
+    candidates = [
+        r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+        r"C:\Program Files (x86)\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+        r"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+        r"C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+        r"C:\Program Files\Adobe\Reader 11.0\Reader\AcroRd32.exe",
+        r"C:\Program Files (x86)\Adobe\Reader 11.0\Reader\AcroRd32.exe",
+        r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
+        r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def print_pdf(path: Path) -> bool:
+    """Envía el PDF a la impresora predeterminada.
+
+    Retorna True si se imprimió automáticamente, False si solo se abrió el PDF
+    (el usuario deberá presionar Ctrl+P manualmente).
+
+    Estrategia:
+    1. SumatraPDF con -print-to-default (impresión directa, sin ventana)
+    2. Adobe Acrobat/Reader con /p /h (impresión directa)
+    3. Fallback: abrir el PDF en el visor predeterminado (requiere Ctrl+P manual)
+    """
+    import subprocess
+
+    pdf_printer = _find_pdf_printer()
+
+    if pdf_printer:
+        exe_lower = pdf_printer.lower()
+        if "sumatra" in exe_lower:
+            subprocess.Popen([pdf_printer, "-print-to-default", "-silent", str(path)])
+        else:
+            subprocess.Popen([pdf_printer, "/p", "/h", str(path)])
+        return True
+
+    # Sin Acrobat ni Sumatra: abrir el PDF para que el usuario imprima con Ctrl+P
     try:
-        import win32api, win32print, win32con
-        try:
-            pname = win32print.GetDefaultPrinter()
-            ph = win32print.OpenPrinter(pname)
-            try:
-                pi2 = win32print.GetPrinter(ph, 2)
-                dm = pi2.get("pDevMode")
-                if dm is not None:
-                    dm.Orientation = win32con.DMORIENT_PORTRAIT
-                    dm.Fields = dm.Fields | win32con.DM_ORIENTATION
-                    win32print.SetPrinter(ph, 2, pi2, 0)
-            finally:
-                win32print.ClosePrinter(ph)
-        except Exception:
-            pass
-        win32api.ShellExecute(0, "print", str(path), None, ".", 1)
+        os.startfile(str(path))
     except Exception:
-        try:
-            os.startfile(str(path))
-        except Exception:
-            import subprocess
-            subprocess.Popen(["cmd", "/c", "start", "", str(path)], shell=False)
+        subprocess.Popen(["cmd", "/c", "start", "", str(path)], shell=False)
+    return False
 
 
 # ── Modo formulario pre-impreso ───────────────────────────────────────────────
@@ -330,6 +352,86 @@ def generate_form_pdf(table: str, data: dict, output_path: Path,
     _draw_form_fields(c, form.get("fields", {}), data, page_size[0], page_size[1])
     c.save()
     return output_path
+
+
+def _render_form_to_pil(data: dict, fields: dict, page_w_pt: float, page_h_pt: float, dpi: int = 200):
+    """Renderiza los campos del formulario en una imagen PIL (fondo blanco)."""
+    from PIL import Image, ImageDraw, ImageFont
+    scale = dpi / 72.0
+    img_w = max(1, int(page_w_pt * scale))
+    img_h = max(1, int(page_h_pt * scale))
+    img = Image.new("RGB", (img_w, img_h), "white")
+    draw = ImageDraw.Draw(img)
+
+    for _key, fdef in fields.items():
+        field_key = fdef.get("field")
+        if not field_key:
+            continue
+        value = _resolve_field(field_key, data)
+        if not value:
+            continue
+        x_pt  = fdef.get("x", 80)
+        y_pt  = fdef.get("y", 300)
+        fs_pt = fdef.get("font_size", 11)
+        label = fdef.get("label", "")
+        center = fdef.get("center", False)
+        text  = f"{label}{value}" if label else value
+
+        # ReportLab: y=0 abajo → Pillow: y=0 arriba
+        x_px  = int(x_pt * scale)
+        y_px  = int((page_h_pt - y_pt) * scale)
+        fs_px = max(6, int(fs_pt * scale))
+
+        font = None
+        for fn in [r"C:\Windows\Fonts\arial.ttf", r"C:\Windows\Fonts\Arial.ttf"]:
+            try:
+                font = ImageFont.truetype(fn, fs_px)
+                break
+            except Exception:
+                pass
+        if font is None:
+            font = ImageFont.load_default()
+
+        anchor = "lm" if not center else "mm"
+        draw_x = (img_w / 2) if center else x_px
+        draw.text((draw_x, y_px), text, fill="black", font=font, anchor=anchor)
+
+    return img
+
+
+def print_form_gdi(data: dict, form_layout: dict) -> None:
+    """Imprime el formulario directo a la impresora usando GDI de Windows.
+
+    No requiere ningún visor PDF instalado — usa Pillow + win32ui.
+    """
+    from PIL import ImageWin
+    import win32print, win32ui, win32con
+
+    page_size = form_layout.get("page_size", [612, 792])
+    page_w_pt, page_h_pt = float(page_size[0]), float(page_size[1])
+    fields = form_layout.get("fields", {})
+
+    img = _render_form_to_pil(data, fields, page_w_pt, page_h_pt, dpi=200)
+
+    printer_name = win32print.GetDefaultPrinter()
+    hdc = win32ui.CreateDC()
+    hdc.CreatePrinterDC(printer_name)
+
+    printable_w = hdc.GetDeviceCaps(win32con.HORZRES)
+    printable_h = hdc.GetDeviceCaps(win32con.VERTRES)
+
+    img_w, img_h = img.size
+    factor = min(printable_w / img_w, printable_h / img_h)
+    final_w = int(img_w * factor)
+    final_h = int(img_h * factor)
+
+    hdc.StartDoc("NSDP Formulario")
+    hdc.StartPage()
+    dib = ImageWin.Dib(img)
+    dib.draw(hdc.GetHandleOutput(), (0, 0, final_w, final_h))
+    hdc.EndPage()
+    hdc.EndDoc()
+    hdc.DeleteDC()
 
 
 def generate_form_constancia(table: str, row_id: int) -> Path:
