@@ -22,16 +22,20 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir={#OutputDir}
 OutputBaseFilename=NSDP_Installer
-SetupIconFile=
+SetupIconFile=assets\logo_parroquia.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequiredOverridesAllowed=dialog
+WizardImageFile=assets\logo_parroquia.png
+WizardSmallImageFile=assets\logo_parroquia.png
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 LicenseFile=
 CloseApplications=yes
 UninstallDisplayName={#AppFullName}
+UninstallDisplayIcon={app}\{#AppExeName}
+AppCopyright=Parroquia Nuestra Señora de la Paz, Hermosillo, Sonora
 
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -39,11 +43,22 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Crear icono en el &escritorio"; GroupDescription: "Iconos adicionales:"; Flags: unchecked
 
+[Dirs]
+; Dar permisos de escritura a todos los usuarios en la carpeta data
+; (necesario para que la app pueda crear/modificar la base de datos)
+Name: "{app}\data"; Permissions: users-full
+Name: "{app}\data\backups"; Permissions: users-full
+Name: "{app}\data\excel_backup"; Permissions: users-full
+
 [Files]
+; Ejecutable principal (PyInstaller one-file bundle)
 Source: "{#SourceDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
+; Configuración inicial de la parroquia (no sobreescribir si ya existe)
+Source: "data\iglesia.json"; DestDir: "{app}\data"; Flags: onlyifdoesntexist
+
 [Icons]
-Name: "{group}\{#AppFullName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\{#AppFullName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppExeName}"
 Name: "{group}\Desinstalar {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppFullName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
@@ -51,12 +66,21 @@ Name: "{autodesktop}\{#AppFullName}"; Filename: "{app}\{#AppExeName}"; Tasks: de
 Filename: "{app}\{#AppExeName}"; Description: "Iniciar {#AppFullName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; No borrar la carpeta data\ para preservar la base de datos del usuario
+; Preservar la base de datos y datos del usuario al desinstalar
+Type: dirifempty; Name: "{app}\data\backups"
+Type: dirifempty; Name: "{app}\data\excel_backup"
+Type: dirifempty; Name: "{app}\data"
 Type: dirifempty; Name: "{app}"
 
 [Code]
-// Verificar que no esté corriendo antes de instalar
 function InitializeSetup(): Boolean;
+var
+  running: Boolean;
 begin
-  Result := True;
+  running := False;
+  if CheckForMutexes('NSDP_APP_MUTEX') then begin
+    MsgBox('La aplicación NSDP está en ejecución. Ciérrela antes de continuar con la instalación.', mbError, MB_OK);
+    running := True;
+  end;
+  Result := not running;
 end;
