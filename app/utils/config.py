@@ -28,8 +28,8 @@ EXCEL_FILES = [
     BASE_DIR / "SACRAMENTOS 2023.xlsx",
 ]
 
-DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 LAYOUTS_DIR.mkdir(parents=True, exist_ok=True)
 EXCEL_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-ASSETS_DIR.mkdir(exist_ok=True)
+ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
