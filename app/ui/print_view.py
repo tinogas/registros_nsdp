@@ -14,7 +14,7 @@ from app.pdf.layout_editor import (
     get_form_layout, save_form_layout, reset_form_layout,
 )
 from app.pdf.renderer import (
-    generate_pdf, generate_form_pdf, print_pdf, print_form_gdi, _resolve_field,
+    generate_pdf, generate_form_pdf, print_pdf, _resolve_field,
     PAGE_W, PAGE_H,
 )
 from app.core.database import db
@@ -524,17 +524,17 @@ class PrintView(ctk.CTkToplevel):
             if self.form_mode:
                 form = get_form_layout(self.table)
                 form["fields"] = self._layout
-                # GDI directo: no necesita visor PDF instalado
-                print_form_gdi(self._data, form)
-                msg, color, delay = "Trabajo enviado a la impresora.", "#4ade80", 3000
+                out = tmp / f"{self.table}_forma_{nombre_safe}_{self.row_id}.pdf"
+                generate_form_pdf(self.table, self._data, out, form)
             else:
                 out = tmp / f"{self.table}_{nombre_safe}_{self.row_id}.pdf"
                 generate_pdf(self.table, self._data, out)
-                directo = print_pdf(out)
-                if directo:
-                    msg, color, delay = "Trabajo enviado a la impresora.", "#4ade80", 3000
-                else:
-                    msg, color, delay = "PDF abierto — presione Ctrl+P para imprimir.", "#facc15", 6000
+
+            directo = print_pdf(out)
+            if directo:
+                msg, color, delay = "Trabajo enviado a la impresora.", "#4ade80", 3000
+            else:
+                msg, color, delay = "PDF abierto — presione Ctrl+P para imprimir.", "#facc15", 6000
         except Exception as e:
             messagebox.showerror("Error de impresión", str(e), parent=self)
             return

@@ -20,8 +20,8 @@ NSDP permite registrar, buscar, reportar e imprimir constancias de los cinco sac
 
 ## Requisitos del sistema
 
-- Windows 10 / 11 (64 bits)
-- Python 3.11+ (solo para desarrollo)
+- Windows 8 / 8.1 / 10 / 11 (64 bits)
+- Python 3.11.x (solo para desarrollo — **no usar 3.12+**: los binarios de `pywin32` compilados con versiones más nuevas de Python requieren un Universal CRT que Windows 8 no trae de fábrica, y la impresión directa vía `win32ui` falla con "DLL load failed")
 - Impresora configurada en el sistema (para imprimir constancias)
 
 ---
